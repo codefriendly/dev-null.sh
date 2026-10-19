@@ -6,7 +6,10 @@ use App\Actions\UpdateUserLastSeenAt;
 use App\Enums\Log;
 use App\Models\Commit;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Exceptions;
+use Illuminate\Support\Facades\Schema;
 
 beforeEach(function (): void {
     $this->travelTo(now()->setDate(2026, 10, 19)->setTime(12, 0));
@@ -89,4 +92,13 @@ it('does not count someone twice when another request saw them first', function 
 
     expect(DB::table('active_user_counts')->count())->toBe(0)
         ->and($stale->last_seen_at->toDateString())->toBe('2026-10-19');
+});
+
+it('reports a failure to remember the day without breaking the page', function (): void {
+    Exceptions::fake();
+    Schema::drop('active_user_counts');
+
+    $this->actingAs($this->user)->get(route('log.show', Log::Following))->assertOk();
+
+    Exceptions::assertReported(QueryException::class);
 });
