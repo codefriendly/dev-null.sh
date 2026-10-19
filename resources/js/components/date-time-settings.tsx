@@ -124,8 +124,8 @@ export default function DateTimeSettings() {
                             </div>
                         </div>
                         <p className="mt-3 text-sm text-muted-foreground">
-                            Browser default uses your browser's date order and
-                            clock format. Month names stay in English.
+                            Choosing “Browser default” uses your browser’s date
+                            order and clock format.
                         </p>
                         <p
                             className="mt-3 font-mono text-sm tabular-nums"
