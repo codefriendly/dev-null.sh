@@ -46,6 +46,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { UserAvatar } from '@/components/user-avatar';
 import { useChat, useThread } from '@/hooks/use-chat';
+import { useDateTime } from '@/hooks/use-date-time';
 import { useImageAttachments } from '@/hooks/use-image-attachments';
 import { useLinkCard } from '@/hooks/use-link-card';
 import { useSecretWarning } from '@/hooks/use-secret-warning';
@@ -67,13 +68,7 @@ import { doubleTapReaction } from '@/lib/reactions';
 import type { ReactionUsage } from '@/lib/reactions';
 import { restoreScrollAnchor, scrollAnchorOf } from '@/lib/scroll-anchor';
 import type { ScrollAnchor } from '@/lib/scroll-anchor';
-import {
-    characterCount,
-    cn,
-    formatDayLabel,
-    laneColor,
-    localDayKey,
-} from '@/lib/utils';
+import { characterCount, cn, laneColor, localDayKey } from '@/lib/utils';
 import type {
     Message,
     MessageReply,
@@ -146,6 +141,7 @@ export function ConversationThread({
     onDropped?: () => void;
 }) {
     const thread = useThread(target);
+    const dateTime = useDateTime();
     const usage = useChat().reactionUsage ?? noUsage;
     const isOrg = target.kind === 'org';
     // Renaming an org updates the thread's target, not the one this was opened with.
@@ -165,8 +161,9 @@ export function ConversationThread({
     const head = thread?.head ?? 0;
     const headUntil = thread?.headUntil ?? 0;
     const items = useMemo(
-        () => itemsOf(messages, pending, head, headUntil, user, isOrg),
-        [messages, pending, head, headUntil, user, isOrg],
+        () =>
+            itemsOf(messages, pending, head, headUntil, user, isOrg, dateTime),
+        [messages, pending, head, headUntil, user, isOrg, dateTime],
     );
     const statusMessage = useMemo(
         () => statusMessageOf(messages, pending, user, isOrg),
@@ -487,7 +484,9 @@ function itemsOf(
     headUntil: number,
     user: User,
     isOrg: boolean,
+    dateTime: ReturnType<typeof useDateTime>,
 ): Item[] {
+    const { formatDayLabel } = dateTime;
     const bubbles: {
         bubble: Bubble;
         at: string;
@@ -726,6 +725,7 @@ function BubbleWithMeta({
     onReact: ((messageId: number, emoji: string) => void) | null;
 }) {
     const [isReacting, setIsReacting] = useState(false);
+    const { formatTime: timeOf } = useDateTime();
     const [isTrayOpen, setIsTrayOpen] = useState(false);
     const trayId = useId();
     const reactButton = useRef<HTMLButtonElement>(null);
@@ -1046,13 +1046,6 @@ function MetaLine({
             {children}
         </div>
     );
-}
-
-function timeOf(date: string): string {
-    return new Date(date).toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-    });
 }
 
 /**

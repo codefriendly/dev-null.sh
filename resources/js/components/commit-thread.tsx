@@ -50,6 +50,7 @@ import {
 } from '@/components/ui/tooltip';
 import { UserAvatar } from '@/components/user-avatar';
 import { UserPreview } from '@/components/user-preview';
+import { useDateTime } from '@/hooks/use-date-time';
 import {
     useCommitNotFound,
     useIsCommitDeleted,
@@ -74,7 +75,6 @@ import { hasModKey } from '@/lib/keyboard';
 import {
     characterCount,
     cn,
-    formatRelativeTime,
     isDeleted,
     laneOf,
     laneStrokeStyle,
@@ -967,6 +967,7 @@ function CommitReply({
     onDeleted: () => void;
 }) {
     const { auth } = usePage().props;
+    const { formatRelativeTime } = useDateTime();
     const now = useNow();
     const { bodyRef, ...translation } = useCommitTranslation(reply);
     const wasDeleted = useIsCommitDeleted(reply.id);

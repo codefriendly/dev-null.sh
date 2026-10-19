@@ -51,6 +51,8 @@ final readonly class CreateExport
                 'preferred_lane' => $user->preferred_lane,
                 'timezone' => $user->timezone,
                 'translation_language' => $user->translation_language,
+                'date_format' => $user->date_format?->value,
+                'time_format' => $user->time_format?->value,
                 'lane_color' => $user->lane_color,
                 'pasteis_mode' => $user->pasteis_mode,
                 'pasteis_received' => $user->pasteis_received,

@@ -20,6 +20,12 @@ The setup script installs dependencies, creates `.env`, generates an app key, ru
 
 With `APP_ENV=local`, run `composer dev`, visit `http://localhost:8000` (or your configured `APP_URL`), and sign in: a modal asks for a username and signs you in as that user, creating it if it doesn't exist yet. GitHub isn't involved at all. The routes are only registered in the local environment, see `routes/web.php`.
 
+### Date & time preferences
+
+Under Settings → Appearance → Date & time, users can choose month-first (`Oct 19`) or day-first (`19 Oct`) dates and a 12- or 24-hour clock independently. Both default to the browser's settings; month and weekday names stay in English. Overrides are saved on the account and are private. Timezone remains under Settings → Profile and is shared in timestamp tooltips. Each section saves independently.
+
+These preferences change presentation only. Existing timezones, Today/Yesterday labels, day grouping, scheduling, relative thresholds, countdowns, machine-readable timestamps, and UTC activity buckets keep their existing behavior.
+
 ### GitHub login
 
 Outside the local environment, users sign in with GitHub. Create a [GitHub OAuth app](https://github.com/settings/developers) with the callback URL `{APP_URL}/auth/github/callback`, then set `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` in `.env`.

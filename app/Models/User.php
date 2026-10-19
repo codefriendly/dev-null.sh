@@ -7,9 +7,11 @@ namespace App\Models;
 use App\Actions\CreateTomFriendship;
 use App\Actions\CreateWorldReply;
 use App\Dto\LiveStream;
+use App\Enums\DateFormat;
 use App\Enums\LivePlatform;
 use App\Enums\Log;
 use App\Enums\RemotesFrom;
+use App\Enums\TimeFormat;
 use Carbon\CarbonInterface;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -47,6 +49,8 @@ use Illuminate\Support\Facades\DB;
  * @property-read string|null $pinned_commit_id
  * @property-read string|null $translation_language
  * @property-read string|null $timezone
+ * @property-read DateFormat|null $date_format
+ * @property-read TimeFormat|null $time_format
  * @property-read LivePlatform|null $live_platform
  * @property-read string|null $live_url
  * @property-read CarbonInterface|null $live_ends_at
@@ -80,6 +84,8 @@ use Illuminate\Support\Facades\DB;
  * @property-read int $followers_count
  */
 #[Hidden([
+    'date_format',
+    'time_format',
     'github_id',
     'email',
     'remember_token',
@@ -128,6 +134,8 @@ final class User extends Authenticatable
      * @var array<string, mixed>
      */
     protected $attributes = [
+        'date_format' => null,
+        'time_format' => null,
         'log' => Log::Following->value,
         'translation_language' => null,
         'pasteis_mode' => false,
@@ -182,6 +190,8 @@ final class User extends Authenticatable
             'pinned_commit_id' => 'string',
             'timezone' => 'string',
             'translation_language' => 'encrypted',
+            'date_format' => DateFormat::class,
+            'time_format' => TimeFormat::class,
             'log' => Log::class,
             'onboarded_at' => 'datetime',
             'github_follows_imported_at' => 'datetime',

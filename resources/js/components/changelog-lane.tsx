@@ -1,13 +1,9 @@
 import { ArrowUpRight } from 'lucide-react';
 import type { Ref } from 'react';
+import { useDateTime } from '@/hooks/use-date-time';
 import type { ChangelogAuthor, ChangelogPullRequest } from '@/lib/changelog';
 import { authorLane } from '@/lib/changelog';
-import {
-    cn,
-    formatFullDateTime,
-    formatRelativeTime,
-    laneColor,
-} from '@/lib/utils';
+import { cn, laneColor } from '@/lib/utils';
 
 export function changelogLaneColor(author: ChangelogAuthor): string {
     return laneColor(authorLane(author));
@@ -93,6 +89,7 @@ export function ChangelogLane({
     firstLinkRef?: Ref<HTMLAnchorElement>;
     timeZone?: string;
 }) {
+    const { formatFullDateTime, formatRelativeTime } = useDateTime();
     return (
         <ol>
             {pullRequests.map((pullRequest, index) => {

@@ -74,6 +74,10 @@ final class HandleInertiaRequests extends Middleware
                 'user' => fn (): ?User => $request->user()?->loadCounts(),
                 'isAdmin' => $isAdmin,
                 'mustReadCommitRules' => $user instanceof User && $user->commit_rules_accepted_at === null,
+                'dateTime' => fn (): array => [
+                    'dateFormat' => $user?->date_format,
+                    'timeFormat' => $user?->time_format,
+                ],
                 'log' => fn (): ?Log => $request->user()?->log,
                 'unreadNotificationsCount' => fn (): int => $user instanceof User ? resolve(NotificationGroupsQuery::class)->unreadCount($user, ListNotificationsRequest::rememberedType($request, $user)) : 0,
                 'unreadMessagesCount' => fn (): int => $user?->remotes_enabled ? resolve(ConversationsQuery::class)->unreadCount($user) : 0,

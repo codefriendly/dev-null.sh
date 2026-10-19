@@ -83,6 +83,7 @@ use App\Http\Controllers\UserActivityGraphController;
 use App\Http\Controllers\UserBanController;
 use App\Http\Controllers\UserBlockController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\UserDateTimeController;
 use App\Http\Controllers\UserFeedController;
 use App\Http\Controllers\UserFollowController;
 use App\Http\Controllers\UserFollowersController;
@@ -406,6 +407,7 @@ Route::middleware('auth')->group(function (): void {
 
     // User Timezone...
     Route::put('settings/timezone', [UserTimezoneController::class, 'update'])->name('user-timezone.update');
+    Route::put('settings/date-time', [UserDateTimeController::class, 'update'])->name('user-date-time.update');
 
     Route::put('settings/translation-language', [UserTranslationLanguageController::class, 'update'])->name('user-translation-language.update');
 

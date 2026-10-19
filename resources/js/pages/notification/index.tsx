@@ -43,19 +43,12 @@ import {
 } from '@/components/ui/tooltip';
 import { UserAvatar } from '@/components/user-avatar';
 import { UserPreview } from '@/components/user-preview';
+import { useDateTime } from '@/hooks/use-date-time';
 import { useNow } from '@/hooks/use-now';
 import { useUser } from '@/hooks/use-user';
 import AppLayout from '@/layouts/app-layout';
 import { backgroundPollOptions } from '@/lib/background-poll';
-import {
-    cn,
-    formatDayLabel,
-    formatFullDateTime,
-    formatRelativeTime,
-    isDeleted,
-    laneColor,
-    localDayKey,
-} from '@/lib/utils';
+import { cn, isDeleted, laneColor, localDayKey } from '@/lib/utils';
 import { show } from '@/routes/user';
 import type {
     BodySegment,
@@ -155,6 +148,7 @@ export default function Index({
     filters: Filters;
     readAt: string;
 }) {
+    const { formatDayLabel } = useDateTime();
     const now = useNow();
     const pollRequest = useRef<CancelToken | null>(null);
     const header = useRef<HTMLDivElement>(null);
@@ -809,6 +803,7 @@ export function NotificationContent({
     hasPrevious?: boolean;
     children?: ReactNode;
 }) {
+    const { formatFullDateTime, formatRelativeTime } = useDateTime();
     const now = useNow();
     const { user } = useUser();
     const actorRef = useRef<HTMLSpanElement>(null);

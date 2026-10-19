@@ -8,10 +8,11 @@ import { MessageStatusGlyph } from '@/components/chat/message-status';
 import { eventText, MemberStack, orgTitle } from '@/components/chat/org';
 import { Skeleton } from '@/components/ui/skeleton';
 import { UserAvatar } from '@/components/user-avatar';
+import { useDateTime } from '@/hooks/use-date-time';
 import { useNow } from '@/hooks/use-now';
 import { summaryKey, targetOf } from '@/lib/chat';
 import type { ChatTarget } from '@/lib/chat';
-import { cn, formatRelativeTime, laneColor } from '@/lib/utils';
+import { cn, laneColor } from '@/lib/utils';
 import type { ConversationSummary, User } from '@/types';
 
 export function ConversationList({
@@ -79,6 +80,7 @@ function ConversationRow({
     onBlocked?: () => void;
     isCompact: boolean;
 }) {
+    const { formatRelativeTime } = useDateTime();
     const now = useNow();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const { partner, last_message: lastMessage, ahead } = conversation;

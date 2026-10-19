@@ -1,3 +1,4 @@
+import { usePage } from '@inertiajs/react';
 import { ExternalLink } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
@@ -14,6 +15,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useNow } from '@/hooks/use-now';
 import type {
     Changelog,
     ChangelogDay,
@@ -34,8 +36,14 @@ function DaySection({
     isRevealed: boolean;
 }) {
     const [isExpanded, setIsExpanded] = useState(false);
+    const now = useNow();
     const firstRevealedLink = useRef<HTMLAnchorElement>(null);
-    const heading = changelogDayHeading(day.date, timeZone);
+    const heading = changelogDayHeading(
+        day.date,
+        timeZone,
+        now,
+        usePage().props.auth.dateTime,
+    );
     const shown = day.pullRequests.slice(0, shownPerDay);
     const hidden = day.pullRequests.slice(shownPerDay);
     return (
