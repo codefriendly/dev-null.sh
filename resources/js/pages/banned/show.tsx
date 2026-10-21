@@ -12,8 +12,8 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
+import { useDateTime } from '@/hooks/use-date-time';
 import { clearRecentSearches } from '@/hooks/use-recent-searches';
-import { formatFullDate } from '@/lib/utils';
 import { logout } from '@/routes';
 
 /**
@@ -27,6 +27,7 @@ export default function Banned({
     bannedAt: string;
 }) {
     const user = usePage().props.auth.user;
+    const { formatFullDate } = useDateTime();
 
     return (
         <>

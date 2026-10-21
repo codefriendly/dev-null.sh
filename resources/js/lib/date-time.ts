@@ -115,6 +115,7 @@ export function createDateTime(preferences: DateTimePreferences = {}) {
     };
     return {
         formatDate,
+        formatFullDate: (date: string) => formatDate(date, { year: true }),
         formatTime,
         formatHour,
         formatFullDateTime,

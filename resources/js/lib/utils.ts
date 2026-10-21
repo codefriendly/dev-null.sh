@@ -29,16 +29,9 @@ export function toUrl(url: NonNullable<InertiaLinkProps['href']>): string {
     return typeof url === 'string' ? url : url.url;
 }
 
-export function formatFullDate(date: string): string {
-    return new Date(date).toLocaleDateString(dateLocale, {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-    });
-}
-
 // Non-React callers use browser defaults. UI components bind account preferences with useDateTime().
 export const {
+    formatFullDate,
     formatRelativeTime,
     formatFullDateTime,
     formatDayLabel,

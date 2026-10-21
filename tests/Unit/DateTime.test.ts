@@ -14,6 +14,7 @@ void test('date order and clock format are independent overrides', () => {
         locale: 'en-US',
     });
     assert.equal(dayFirst.formatFullDateTime(instant), '14:35 · 19 Oct 2026');
+    assert.equal(dayFirst.formatFullDate(instant), '19 Oct 2026');
     assert.equal(dayFirst.formatDate(instant, { year: false }), '19 Oct');
     assert.equal(dayFirst.formatTime('2026-10-19T00:00:00Z'), '00:00');
     assert.equal(dayFirst.formatHour(0), '00');
@@ -26,6 +27,7 @@ void test('date order and clock format are independent overrides', () => {
         monthFirst.formatFullDateTime(instant),
         /^2:35\s*pm · Oct 19, 2026$/i,
     );
+    assert.equal(monthFirst.formatFullDate(instant), 'Oct 19, 2026');
     assert.match(monthFirst.formatHour(14), /^2\s*pm$/i);
     const dateOnly = createDateTime({ dateFormat: 'day_first', locale: 'en-US' });
     assert.match(dateOnly.formatFullDateTime(instant), /^2:35\s*PM · 19 Oct 2026$/);
@@ -82,6 +84,10 @@ void test('format preferences preserve browser-local days and year omission at m
             );
             assert.equal(
                 format.formatDate(now, { year: true }),
+                dateFormat === 'day_first' ? '31 Dec 2026' : 'Dec 31, 2026',
+            );
+            assert.equal(
+                format.formatFullDate(now.toISOString()),
                 dateFormat === 'day_first' ? '31 Dec 2026' : 'Dec 31, 2026',
             );
             assert.equal(
