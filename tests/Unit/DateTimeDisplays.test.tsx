@@ -33,6 +33,8 @@ const { TooltipProvider } =
     await import('../../resources/js/components/ui/tooltip');
 const { default: Metrics } =
     await import('../../resources/js/pages/operations/metrics');
+const { UserModerationStatus } =
+    await import('../../resources/js/components/user-moderation-menu');
 
 afterEach(() => {
     vi.useRealTimers();
@@ -54,6 +56,29 @@ test('profile clocks use the viewer clock preference in the profile owner timezo
     assert.match(clock(), />8:20\s*PM<\/time>/i);
     server = true;
     assert.equal(clock(), '');
+});
+
+test('timeout deadlines follow the viewer date and clock preferences', () => {
+    process.env.TZ = 'UTC';
+    const deadline = () =>
+        renderToString(
+            <UserModerationStatus
+                moderation={{
+                    timeoutsCount: 1,
+                    timeout: {
+                        reason: 'Spam',
+                        endsAt: '2026-10-19T14:35:00Z',
+                    },
+                    ban: null,
+                    reasons: {},
+                    durations: {},
+                }}
+            />,
+        );
+    auth.dateTime = { dateFormat: 'day_first', timeFormat: '24h' };
+    assert.match(deadline(), /14:35 · 19 Oct 2026/);
+    auth.dateTime = { dateFormat: 'month_first', timeFormat: '12h' };
+    assert.match(deadline(), /2:35\s*PM · Oct 19, 2026/i);
 });
 
 test('metrics dates follow viewer date order without changing UTC buckets or date inputs', () => {
