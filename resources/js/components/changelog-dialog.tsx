@@ -3,6 +3,7 @@ import { ExternalLink } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import {
+    ChangelogAuthorLink,
     ChangelogAvatar,
     ChangelogLane,
     changelogLaneColor,
@@ -22,6 +23,7 @@ import type {
     ChangelogPullRequest,
 } from '@/lib/changelog';
 import { changelogDayHeading, changelogDays } from '@/lib/changelog';
+import { formatCount } from '@/lib/numbers';
 import { cn } from '@/lib/utils';
 
 const shownPerDay = 5;
@@ -30,10 +32,12 @@ function DaySection({
     day,
     timeZone,
     isRevealed,
+    onNavigate,
 }: {
     day: ChangelogDay;
     timeZone: string;
     isRevealed: boolean;
+    onNavigate?: () => void;
 }) {
     const [isExpanded, setIsExpanded] = useState(false);
     const now = useNow();
@@ -80,11 +84,16 @@ function DaySection({
                                 boxShadow: `0 0 0 1.5px ${changelogLaneColor(author)}`,
                             }}
                         >
-                            <ChangelogAvatar
-                                login={author.login}
-                                avatar={author.avatar}
-                                size={20}
-                            />
+                            <ChangelogAuthorLink
+                                author={author}
+                                onClick={onNavigate}
+                                className="flex rounded-full"
+                            >
+                                <ChangelogAvatar
+                                    avatar={author.avatar}
+                                    size={20}
+                                />
+                            </ChangelogAuthorLink>
                         </li>
                     ))}
                 </ul>
@@ -94,6 +103,7 @@ function DaySection({
                     pullRequests={shown}
                     continues={hidden.length > 0}
                     timeZone={timeZone}
+                    onNavigate={onNavigate}
                 />
                 {hidden.length > 0 &&
                     (isExpanded ? (
@@ -104,6 +114,7 @@ function DaySection({
                                     previousAuthor={shown.at(-1)?.author}
                                     firstLinkRef={firstRevealedLink}
                                     timeZone={timeZone}
+                                    onNavigate={onNavigate}
                                 />
                             </div>
                         </div>
@@ -187,6 +198,7 @@ export function ChangelogDialog({
                     onLoadOlder={onLoadOlder}
                     timeZone={timeZone}
                     isDialog
+                    onNavigate={() => onOpenChange(false)}
                 />
             </DialogContent>
         </Dialog>
@@ -201,6 +213,7 @@ export function ChangelogContent({
     onLoadOlder,
     timeZone,
     isDialog = false,
+    onNavigate,
 }: {
     changelog: Changelog | null;
     hasFailed: boolean;
@@ -209,6 +222,7 @@ export function ChangelogContent({
     onLoadOlder: (onLoaded: (added: ChangelogPullRequest[]) => void) => void;
     timeZone: string;
     isDialog?: boolean;
+    onNavigate?: () => void;
 }) {
     const [revealedDays, setRevealedDays] = useState<Set<string>>(new Set());
     const scroller = useRef<HTMLDivElement>(null);
@@ -259,6 +273,7 @@ export function ChangelogContent({
                                 day={day}
                                 timeZone={timeZone}
                                 isRevealed={revealedDays.has(day.date)}
+                                onNavigate={onNavigate}
                             />
                         ))}
                         {changelog.olderBefore !== null && (
@@ -301,7 +316,7 @@ export function ChangelogContent({
             <div className="flex items-center justify-between gap-4 border-t px-5 py-2.5 text-xs text-muted-foreground">
                 <span className="tabular-nums">
                     {changelog !== null &&
-                        `${pullRequests.length} merges · ${contributors} contributors`}
+                        `${formatCount(pullRequests.length)} merges · ${formatCount(contributors)} contributors`}
                 </span>
                 {changelog !== null && (
                     <a

@@ -51,6 +51,7 @@ use Illuminate\Support\Facades\DB;
  * @property-read string|null $timezone
  * @property-read DateFormat|null $date_format
  * @property-read TimeFormat|null $time_format
+ * @property-read bool $show_local_time
  * @property-read LivePlatform|null $live_platform
  * @property-read string|null $live_url
  * @property-read CarbonInterface|null $live_ends_at
@@ -138,6 +139,7 @@ final class User extends Authenticatable
         'time_format' => null,
         'log' => Log::Following->value,
         'translation_language' => null,
+        'show_local_time' => false,
         'pasteis_mode' => false,
         'remotes_enabled' => true,
         'remotes_from' => RemotesFrom::Following->value,
@@ -189,6 +191,7 @@ final class User extends Authenticatable
             'pasteis_given_on' => 'date',
             'pinned_commit_id' => 'string',
             'timezone' => 'string',
+            'show_local_time' => 'boolean',
             'translation_language' => 'encrypted',
             'date_format' => DateFormat::class,
             'time_format' => TimeFormat::class,
@@ -322,6 +325,14 @@ final class User extends Authenticatable
     public function muting(): BelongsToMany
     {
         return $this->belongsToMany(self::class, 'mutes', 'muter_id', 'muted_id')->withTimestamps();
+    }
+
+    /**
+     * @return BelongsToMany<User, $this>
+     */
+    public function dismissedSuggestions(): BelongsToMany
+    {
+        return $this->belongsToMany(self::class, 'suggestion_dismissals', 'user_id', 'dismissed_id')->withTimestamps();
     }
 
     /**

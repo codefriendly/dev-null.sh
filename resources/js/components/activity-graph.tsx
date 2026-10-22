@@ -1,7 +1,7 @@
 import type { CSSProperties, MouseEvent } from 'react';
 import { useRef, useState } from 'react';
 import { useDateTime } from '@/hooks/use-date-time';
-import { formatCount } from '@/lib/numbers';
+import { exactCountTitle, formatCount } from '@/lib/numbers';
 import { cn } from '@/lib/utils';
 import type { Activity, ActivityBucket, ActivityScale } from '@/types';
 
@@ -171,7 +171,10 @@ export function ActivityGraph({
                         'No commits yet'
                     ) : (
                         <>
-                            <span className="font-mono text-foreground">
+                            <span
+                                className="font-mono text-foreground"
+                                title={exactCountTitle(total)}
+                            >
                                 {formatCount(total)}
                             </span>{' '}
                             {total === 1 ? 'commit' : 'commits'}{' '}

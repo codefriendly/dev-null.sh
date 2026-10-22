@@ -147,6 +147,24 @@ export function localDayKey(date: string): string {
     return `${day.getFullYear()}-${day.getMonth() + 1}-${day.getDate()}`;
 }
 
+/**
+ * The offset a timezone has at a moment, like `UTC +02:00`, or `UTC` when it has none.
+ */
+export function formatUtcOffset(date: Date, timeZone: string): string {
+    const offset = new Intl.DateTimeFormat('en-US', {
+        timeZone,
+        timeZoneName: 'longOffset',
+    })
+        .formatToParts(date)
+        .find((part) => part.type === 'timeZoneName')?.value;
+
+    if (offset === undefined || offset === 'GMT' || offset === 'GMT+00:00') {
+        return 'UTC';
+    }
+
+    return offset.replace('GMT', 'UTC ');
+}
+
 export function timeZoneCity(timeZone: string): string {
     return timeZone.slice(timeZone.lastIndexOf('/') + 1).replaceAll('_', ' ');
 }
