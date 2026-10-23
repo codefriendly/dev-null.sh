@@ -49,6 +49,7 @@ export type Auth = {
     };
     user: Profile | null;
     isAdmin: boolean;
+    automaticTranslation: boolean;
     mustReadCommitRules: boolean;
     log: Log | null;
     unreadNotificationsCount: number;

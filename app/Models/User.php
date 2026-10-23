@@ -47,6 +47,7 @@ use Illuminate\Support\Facades\DB;
  * @property-read int $pasteis_given_today
  * @property-read CarbonInterface|null $pasteis_given_on
  * @property-read string|null $pinned_commit_id
+ * @property-read bool|null $automatic_translation
  * @property-read string|null $translation_language
  * @property-read string|null $timezone
  * @property-read DateFormat|null $date_format
@@ -91,6 +92,7 @@ use Illuminate\Support\Facades\DB;
     'email',
     'remember_token',
     'translation_language',
+    'automatic_translation',
     'preferred_lane',
     'lane_color',
     'pasteis_mode',
@@ -193,6 +195,7 @@ final class User extends Authenticatable
             'timezone' => 'string',
             'show_local_time' => 'boolean',
             'translation_language' => 'encrypted',
+            'automatic_translation' => 'boolean',
             'date_format' => DateFormat::class,
             'time_format' => TimeFormat::class,
             'log' => Log::class,

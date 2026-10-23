@@ -79,6 +79,7 @@ final readonly class CreateExport
                 'timezone' => $user->timezone,
                 'show_local_time' => $user->show_local_time,
                 'translation_language' => $user->translation_language,
+                'automatic_translation' => $user->automatic_translation ?? true,
                 'date_format' => $user->date_format?->value,
                 'time_format' => $user->time_format?->value,
                 'lane_color' => $user->lane_color,
