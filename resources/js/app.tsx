@@ -11,11 +11,10 @@ import { trackCommitPhotoPage } from '@/lib/commit-photo';
 import { initializeCommitState } from '@/lib/commit-state';
 import { trackCurrentPage } from '@/lib/current-page';
 import { trackFollowRequests } from '@/lib/follow-requests';
+import { pageTitle } from '@/lib/page-title';
 import { registerServiceWorker } from '@/lib/service-worker';
 import { trackVisualViewport } from '@/lib/visual-viewport';
 import '../css/app.css';
-
-const appName = import.meta.env.VITE_APP_NAME || '/dev/null';
 
 trackCurrentPage();
 trackCommitPhotoPage();
@@ -23,7 +22,7 @@ trackVisualViewport();
 trackAnalyticsEvents();
 
 void createInertiaApp({
-    title: (title) => (title ? `${title} - ${appName}` : appName),
+    title: pageTitle,
     resolve: (name) =>
         resolvePageComponent<ComponentType>(
             `./pages/${name}.tsx`,

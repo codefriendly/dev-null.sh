@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { renderToString } from 'react-dom/server';
 import { afterEach, test, vi } from 'vite-plus/test';
 import type { DateTimePreferences } from '../../resources/js/lib/date-time';
+import type { User } from '../../resources/js/types';
 
 const auth = {
     user: { timezone: 'Pacific/Honolulu' },
@@ -33,6 +34,8 @@ const { TooltipProvider } =
     await import('../../resources/js/components/ui/tooltip');
 const { default: Metrics } =
     await import('../../resources/js/pages/operations/metrics');
+const { default: Bulk } =
+    await import('../../resources/js/pages/moderation/bulk');
 const { UserModerationStatus } =
     await import('../../resources/js/components/user-moderation-menu');
 
@@ -81,13 +84,79 @@ test('timeout deadlines follow the viewer date and clock preferences', () => {
     assert.match(deadline(), /2:35\s*PM · Oct 19, 2026/i);
 });
 
+test('bulk activity timeout deadlines follow viewer date and clock preferences', () => {
+    process.env.TZ = 'UTC';
+    const props: Parameters<typeof Bulk>[0] = {
+        scale: 'day',
+        activity: {
+            follows: [
+                {
+                    user: {
+                        id: 'bulk-user',
+                        username: 'bulk-user',
+                        name: 'Bulk User',
+                    } as User,
+                    count: 32,
+                    reach: null,
+                    newcomers: 7,
+                },
+            ],
+            stars: [],
+            replies: [],
+            posts: [],
+        },
+        thresholds: {
+            follows: { perDay: 30, total: 30 },
+            stars: { perDay: 30, total: 30 },
+            replies: { perDay: 30, total: 30 },
+            posts: { perDay: 30, total: 30 },
+        },
+        moderation: {
+            'bulk-user': {
+                timeoutsCount: 1,
+                timeout: { reason: 'Spam', endsAt: '2026-10-19T14:35:00Z' },
+                ban: null,
+                reasons: {},
+                durations: {},
+            },
+        },
+    };
+    const page = () =>
+        renderToString(
+            <TooltipProvider>
+                <Bulk {...props} />
+            </TooltipProvider>,
+        ).replaceAll('<!-- -->', '');
+    auth.dateTime = { dateFormat: 'day_first', timeFormat: '24h' };
+    assert.match(page(), /timeout until 14:35 · 19 Oct 2026/);
+    auth.dateTime = { dateFormat: 'month_first', timeFormat: '12h' };
+    assert.match(page(), /timeout until 2:35\s*PM · Oct 19, 2026/i);
+});
+
 test('metrics dates follow viewer date order without changing UTC buckets or date inputs', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-10-22T14:35:00Z'));
     process.env.TZ = 'Pacific/Honolulu';
     const props: Parameters<typeof Metrics>[0] = {
         range: { from: '2026-10-18', to: '2026-10-19', all_time: false },
-        activeUserCounts: [{ date: '2026-10-19', count: 3 }],
+        activeUserCounts: [
+            {
+                date: '2026-10-18',
+                count: 7,
+                returning: 4,
+                activated: 2,
+                not_activated: 1,
+                pending: 0,
+            },
+            {
+                date: '2026-10-19',
+                count: 3,
+                returning: 2,
+                activated: 0,
+                not_activated: 0,
+                pending: 1,
+            },
+        ],
         activeUsers: { daily: 3, weekly: 5, monthly: 8, weekly_authors: 2 },
         responses: {
             commits: 3,
@@ -139,6 +208,11 @@ test('metrics dates follow viewer date order without changing UTC buckets or dat
         );
     const dayFirst = page();
     assert.match(dayFirst, />18 Oct<\/span>/);
+    assert.match(dayFirst, /5 fewer than the 7 of 18 Oct, net/);
+    assert.match(
+        dayFirst,
+        /3 active, 2 returning users, back after any gap, 5 fewer than the 7 of 18 Oct, net, 1 new: 1 under 12h/,
+    );
     assert.equal(
         (dayFirst.match(/<th scope="row">19 Oct<\/th>/g) ?? []).length,
         3,
@@ -149,6 +223,7 @@ test('metrics dates follow viewer date order without changing UTC buckets or dat
     auth.dateTime = { dateFormat: 'month_first' };
     const monthFirst = page();
     assert.match(monthFirst, />Oct 18<\/span>/);
+    assert.match(monthFirst, /5 fewer than the 7 of Oct 18, net/);
     assert.equal(
         (monthFirst.match(/<th scope="row">Oct 19<\/th>/g) ?? []).length,
         3,

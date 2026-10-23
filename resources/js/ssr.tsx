@@ -5,14 +5,13 @@ import type { ComponentType } from 'react';
 import ReactDOMServer from 'react-dom/server';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
-
-const appName = import.meta.env.VITE_APP_NAME || '/dev/null';
+import { pageTitle } from '@/lib/page-title';
 
 createServer((page) =>
     createInertiaApp({
         page,
         render: ReactDOMServer.renderToString,
-        title: (title) => (title ? `${title} - ${appName}` : appName),
+        title: pageTitle,
         resolve: (name) =>
             resolvePageComponent(
                 `./pages/${name}.tsx`,
