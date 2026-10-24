@@ -38,6 +38,19 @@ const { default: Bulk } =
     await import('../../resources/js/pages/moderation/bulk');
 const { UserModerationStatus } =
     await import('../../resources/js/components/user-moderation-menu');
+const { LineChart } =
+    await import('../../resources/js/components/operations/charts');
+const { default: Forecasts } =
+    await import('../../resources/js/pages/operations/forecasts');
+const { default: Events } =
+    await import('../../resources/js/pages/operations/events');
+const { FailuresPanel } =
+    await import('../../resources/js/components/operations/health-failures');
+const { FailedJobsPanel } =
+    await import('../../resources/js/components/operations/health-failed-jobs');
+const { OverviewEvents } =
+    await import('../../resources/js/components/operations/overview-events');
+const { default: Links } = await import('../../resources/js/pages/links/index');
 
 afterEach(() => {
     vi.useRealTimers();
@@ -59,6 +72,173 @@ test('profile clocks use the viewer clock preference in the profile owner timezo
     assert.match(clock(), />8:20\s*PM<\/time>/i);
     server = true;
     assert.equal(clock(), '');
+});
+
+test('forecast dates keep their UTC calendar day and follow viewer date order', () => {
+    process.env.TZ = 'Pacific/Honolulu';
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-22T14:35:00Z'));
+    const chart = () =>
+        renderToString(
+            <LineChart
+                history={[{ date: '2026-10-19', value: 7 }]}
+                forecast={[
+                    { date: '2026-10-20', value: 13, lower: 9, upper: 17 },
+                ]}
+                label="Signups by UTC day"
+                unit="signups"
+            />,
+        ).replaceAll('<!-- -->', '');
+    const milestones = () =>
+        renderToString(
+            <Forecasts
+                forecasts={[]}
+                milestones={[
+                    {
+                        metric: 'users',
+                        current: 37,
+                        target: 100,
+                        eta: '2026-11-19',
+                    },
+                ]}
+                month={[]}
+            />,
+        ).replaceAll('<!-- -->', '');
+    auth.dateTime = { dateFormat: 'day_first' };
+    assert.match(chart(), /19 Oct 2026/);
+    assert.match(chart(), /20 Oct 2026/);
+    assert.match(chart(), /<td>13<\/td><td>9 – 17<\/td>/);
+    assert.match(milestones(), /≈ 19 Nov/);
+    auth.dateTime = { dateFormat: 'month_first' };
+    assert.match(chart(), /Oct 19, 2026/);
+    assert.match(milestones(), /≈ Nov 19/);
+});
+
+test('event logs keep seconds and local grouping while chart days stay UTC', () => {
+    process.env.TZ = 'Pacific/Honolulu';
+    const props: Parameters<typeof Events>[0] = {
+        events: [
+            {
+                id: 'example',
+                source: 'jobs',
+                level: 'error',
+                at: '2026-10-19T00:35:47Z',
+                message: 'Example job failed',
+                detail: 'Example exception',
+                actor: null,
+                href: null,
+            },
+        ],
+        filters: { window: '30d', source: null, level: null, search: '' },
+        counts: {
+            signups: 0,
+            jobs: 3,
+            reports: 0,
+            moderation: 0,
+            bans: 0,
+            timeouts: 0,
+            features: 0,
+        },
+        histogram: [
+            {
+                at: '2026-10-19T00:00:00Z',
+                info: 0,
+                notice: 0,
+                warning: 0,
+                error: 3,
+            },
+        ],
+    };
+    const page = () =>
+        renderToString(<Events {...props} />).replaceAll('<!-- -->', '');
+    auth.dateTime = { dateFormat: 'day_first', timeFormat: '12h' };
+    assert.match(page(), /2:35:47\s*PM/);
+    assert.match(page(), /18 Oct 2026/);
+    assert.match(page(), /HST/);
+    assert.match(page(), /<th scope="row">19 Oct<\/th>/);
+    assert.match(page(), /dateTime="2026-10-19T00:35:47Z"/);
+    props.filters.window = '7d';
+    assert.match(page(), /Sun 2:00\s*PM/);
+    auth.dateTime = { dateFormat: 'month_first', timeFormat: '24h' };
+    props.filters.window = '30d';
+    assert.match(page(), />14:35:47<\/time>/);
+    assert.match(page(), /Oct 18, 2026/);
+    assert.match(page(), /<th scope="row">Oct 19<\/th>/);
+});
+
+test('health, overview and shared links use preferences for absolute date fallbacks', () => {
+    process.env.TZ = 'UTC';
+    const at = '2025-10-19T14:35:00Z';
+    const event: Parameters<typeof OverviewEvents>[0]['events'][number] = {
+        id: 'example',
+        source: 'jobs',
+        level: 'error',
+        at,
+        message: 'Example job failed',
+        detail: null,
+        actor: null,
+        href: null,
+    };
+    const panels = () =>
+        renderToString(
+            <>
+                <FailuresPanel
+                    failureTrend={{
+                        last_24h: 3,
+                        previous_24h: 1,
+                        hours: [{ at, count: 3 }],
+                        by_job: [
+                            {
+                                name: 'App\\Jobs\\Example',
+                                count: 3,
+                                last_failed_at: at,
+                            },
+                        ],
+                    }}
+                />
+                <FailedJobsPanel
+                    failedJobs={{
+                        total: 1,
+                        recent: [
+                            {
+                                uuid: 'example',
+                                name: 'App\\Jobs\\Example',
+                                queue: 'default',
+                                exception: 'Example exception',
+                                failed_at: at,
+                            },
+                        ],
+                    }}
+                />
+                <OverviewEvents events={[event]} />
+                <Links
+                    url={null}
+                    topLinks={[
+                        {
+                            url: 'https://example.com',
+                            title: 'Example link',
+                            site_name: 'Example',
+                            people: 2,
+                            commits: 3,
+                            last_mentioned_at: at,
+                        },
+                    ]}
+                />
+            </>,
+        ).replaceAll('<!-- -->', '');
+    auth.dateTime = { dateFormat: 'day_first', timeFormat: '24h' };
+    assert.equal(
+        (panels().match(/title="14:35 · 19 Oct 2025"/g) ?? []).length,
+        3,
+    );
+    assert.match(panels(), /last 19 Oct 2025/);
+    assert.match(panels(), /<th scope="row">14:35<\/th>/);
+    auth.dateTime = { dateFormat: 'month_first', timeFormat: '12h' };
+    assert.equal(
+        (panels().match(/title="2:35\s*PM · Oct 19, 2025"/g) ?? []).length,
+        3,
+    );
+    assert.match(panels(), /last Oct 19, 2025/);
 });
 
 test('timeout deadlines follow the viewer date and clock preferences', () => {

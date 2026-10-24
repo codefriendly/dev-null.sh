@@ -1,4 +1,4 @@
-import type { CSSProperties, MouseEvent } from 'react';
+import type { CSSProperties, MouseEvent, ReactNode } from 'react';
 import { useRef, useState } from 'react';
 import { useDateTime } from '@/hooks/use-date-time';
 import { exactCountTitle, formatCount } from '@/lib/numbers';
@@ -104,11 +104,18 @@ function stripLabel(
     index: number,
     length: number,
     dateTime: ReturnType<typeof useDateTime>,
-): string | null {
+): ReactNode {
     if (scale === 'week') {
         const day = utcDay(bucket.date);
 
-        return `${weekdayNames[day.getUTCDay()]} ${day.getUTCDate()}`;
+        return (
+            <>
+                <span className="max-sm:block">
+                    {weekdayNames[day.getUTCDay()]}
+                </span>{' '}
+                {day.getUTCDate()}
+            </>
+        );
     }
 
     if (scale === 'day') {

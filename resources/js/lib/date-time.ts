@@ -64,11 +64,16 @@ export function createDateTime(preferences: DateTimePreferences = {}) {
             : preferences.timeFormat === '12h'
               ? { hourCycle: 'h12' }
               : {};
-    const formatTime = (date: string | Date, timeZone?: string) =>
+    const formatTime = (
+        date: string | Date,
+        timeZone?: string,
+        options: Intl.DateTimeFormatOptions = {},
+    ) =>
         formatter(preferences.locale, {
             hour: preferences.timeFormat === '24h' ? '2-digit' : 'numeric',
             minute: '2-digit',
             timeZone,
+            ...options,
             ...timeOptions(),
         }).format(new Date(date));
     const formatHour = (hour: number) =>

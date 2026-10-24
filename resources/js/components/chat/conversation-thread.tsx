@@ -45,7 +45,13 @@ import { MentionTextarea } from '@/components/mention-textarea';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { UserAvatar } from '@/components/user-avatar';
+import { UserPreview } from '@/components/user-preview';
 import { useChat, useThread } from '@/hooks/use-chat';
 import { useDateTime } from '@/hooks/use-date-time';
 import { useImageAttachments } from '@/hooks/use-image-attachments';
@@ -65,6 +71,7 @@ import {
     toggleReaction,
 } from '@/lib/chat';
 import type { ChatTarget, PendingMessage } from '@/lib/chat';
+import { isBehindLatest } from '@/lib/chat-scroll';
 import { formatCount } from '@/lib/numbers';
 import { pullsOf, statusMessageOf } from '@/lib/pulls';
 import { doubleTapReaction } from '@/lib/reactions';
@@ -157,10 +164,13 @@ export function ConversationThread({
     const hasScrolledIn = useRef(false);
     const anchor = useRef<ScrollAnchor | null>(null);
     const restoredScrollTop = useRef<number | null>(null);
+    const sentAnchor = useRef<ScrollAnchor | null>(null);
+    const isFollowingSend = useRef(false);
     const isReplyResizing = useRef(false);
     const seenLatest = useRef(0);
     const [unseen, setUnseen] = useState(0);
     const [isBrowsingHistory, setIsBrowsingHistory] = useState(false);
+    const [isScrolledBack, setIsScrolledBack] = useState(false);
     const [isJumping, setIsJumping] = useState(false);
     const jumpRequest = useRef<AbortController | null>(null);
 
@@ -198,6 +208,15 @@ export function ConversationThread({
     const draft = useMessageDraft(user, current);
     const replyingTo = thread?.replyingTo ?? null;
     const members = thread?.members;
+
+    const updateScrollPosition = useCallback(() => {
+        setIsScrolledBack(
+            scroller.current !== null &&
+                isBehindLatest(scroller.current, messages),
+        );
+    }, [messages]);
+
+    useLayoutEffect(updateScrollPosition, [updateScrollPosition, isVisible]);
 
     useLayoutEffect(() => {
         isReplyResizing.current = true;
@@ -251,6 +270,8 @@ export function ConversationThread({
             const request = new AbortController();
             jumpRequest.current = request;
             anchor.current = null;
+            sentAnchor.current = null;
+            isFollowingSend.current = false;
             restoredScrollTop.current = null;
             isPinned.current = false;
             setIsBrowsingHistory(true);
@@ -304,10 +325,11 @@ export function ConversationThread({
         (reply: MessageReply) => {
             if (scroller.current !== null) {
                 // Reuse the reading anchor across folds so rounded scroll positions cannot accumulate drift.
-                if (isPinned.current || anchor.current === null) {
+                if (isPinned.current) {
+                    anchor.current = null;
+                } else if (anchor.current === null) {
                     anchor.current = scrollAnchorOf(scroller.current);
                 }
-                isPinned.current = false;
             }
 
             setReplyingTo(target, reply);
@@ -366,7 +388,23 @@ export function ConversationThread({
             return;
         }
 
-        if (isPinned.current) {
+        if (sentAnchor.current !== null) {
+            restoreScrollAnchor(element, sentAnchor.current);
+            sentAnchor.current = null;
+            anchor.current = scrollAnchorOf(element);
+            isFollowingSend.current = element.scrollTop !== 0;
+            element.scrollTo({
+                top: 0,
+                behavior: window.matchMedia('(prefers-reduced-motion: reduce)')
+                    .matches
+                    ? 'instant'
+                    : 'smooth',
+            });
+            seenLatest.current = latestId;
+        } else if (isFollowingSend.current) {
+            // Confirming the same optimistic reply must not interrupt its scroll.
+            seenLatest.current = latestId;
+        } else if (isPinned.current) {
             element.scrollTop = 0;
             seenLatest.current = latestId;
         } else {
@@ -392,6 +430,8 @@ export function ConversationThread({
     const releaseScrollAnchor = useCallback(() => {
         // Let deliberate input own the viewport until the fold settles, including delayed automatic scroll events.
         anchor.current = null;
+        sentAnchor.current = null;
+        isFollowingSend.current = false;
         jumpRequest.current?.abort();
         jumpRequest.current = null;
         setIsJumping(false);
@@ -409,10 +449,16 @@ export function ConversationThread({
         }
 
         const observer = new ResizeObserver(() => {
-            if (!isPinned.current && anchor.current !== null) {
+            if (
+                !isPinned.current &&
+                !isFollowingSend.current &&
+                anchor.current !== null
+            ) {
                 restoreScrollAnchor(element, anchor.current);
                 restoredScrollTop.current = element.scrollTop;
             }
+
+            updateScrollPosition();
         });
 
         const onWheel = (event: WheelEvent) => {
@@ -449,7 +495,7 @@ export function ConversationThread({
             element.removeEventListener('wheel', onWheel);
             element.removeEventListener('touchmove', releaseScrollAnchor);
         };
-    }, [releaseScrollAnchor, thread?.isLoaded]);
+    }, [releaseScrollAnchor, thread?.isLoaded, updateScrollPosition]);
 
     const onScroll = () => {
         const element = scroller.current;
@@ -457,6 +503,8 @@ export function ConversationThread({
         if (element === null) {
             return;
         }
+
+        updateScrollPosition();
 
         // A correction during the reply fold is not an intentional scroll, even while it is close to the bottom.
         if (
@@ -470,6 +518,9 @@ export function ConversationThread({
 
         restoredScrollTop.current = null;
         isPinned.current = isAtLatest(element);
+        if (element.scrollTop === 0) {
+            isFollowingSend.current = false;
+        }
         if (!isReplyResizing.current || anchor.current !== null) {
             anchor.current = scrollAnchorOf(element);
         }
@@ -499,7 +550,10 @@ export function ConversationThread({
         jumpRequest.current = null;
         setIsJumping(false);
         setIsBrowsingHistory(false);
+        setIsScrolledBack(false);
         anchor.current = null;
+        sentAnchor.current = null;
+        isFollowingSend.current = false;
         restoredScrollTop.current = null;
         isPinned.current = true;
         const element = scroller.current;
@@ -605,12 +659,14 @@ export function ConversationThread({
                 )}
             </div>
 
-            {(isBrowsingHistory || unseen > 0) && (
+            {(isBrowsingHistory || isScrolledBack || unseen > 0) && (
                 <button
                     type="button"
                     onClick={jumpToLatest}
                     aria-label={
-                        isBrowsingHistory ? 'Back to present' : undefined
+                        isBrowsingHistory || unseen === 0
+                            ? 'Back to present'
+                            : undefined
                     }
                     className="absolute bottom-[calc(var(--composer-height,4rem)+2.5rem)] left-1/2 flex min-h-9 -translate-x-1/2 items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-xs font-medium whitespace-nowrap text-primary-foreground shadow-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
                 >
@@ -619,7 +675,9 @@ export function ConversationThread({
                     ) : (
                         <ArrowDown aria-hidden className="size-3.5" />
                     )}
-                    {isBrowsingHistory ? 'Back to present' : `${unseen} new`}
+                    {isBrowsingHistory || unseen === 0
+                        ? 'Back to present'
+                        : `${unseen} new`}
                     {isJumping && (
                         <span className="sr-only" role="status">
                             Loading original message
@@ -648,6 +706,10 @@ export function ConversationThread({
                         jumpRequest.current = null;
                         setIsJumping(false);
                         setIsBrowsingHistory(false);
+                        sentAnchor.current =
+                            scroller.current === null || isPinned.current
+                                ? null
+                                : scrollAnchorOf(scroller.current);
                         isPinned.current = true;
                     }}
                     onReplySettled={settleReplyPreview}
@@ -847,24 +909,29 @@ const ThreadItem = memo(function ThreadItem({
             })}
         >
             {item.author !== null && (
-                <Link
-                    href={show(item.author)}
-                    className="group flex max-w-full min-w-0 items-center gap-1.5 rounded-sm px-1.5 pb-0.5 text-xs text-muted-foreground"
-                    title={item.author.name}
+                <UserPreview
+                    user={item.author}
+                    className="flex max-w-full min-w-0 px-1.5 pb-0.5"
                 >
-                    <UserAvatar
-                        user={item.author}
-                        className="size-4 ring-1 ring-(--lane)"
-                        style={
-                            {
-                                '--lane': laneColor(item.author.lane),
-                            } as React.CSSProperties
-                        }
-                    />
-                    <span className="truncate font-medium text-foreground group-hover:underline">
-                        {item.author.name}
-                    </span>
-                </Link>
+                    <Link
+                        href={show(item.author)}
+                        className="flex min-w-0 items-center gap-1.5 rounded-sm text-xs text-muted-foreground"
+                        title={item.author.name}
+                    >
+                        <UserAvatar
+                            user={item.author}
+                            className="size-4 ring-1 ring-(--lane)"
+                            style={
+                                {
+                                    '--lane': laneColor(item.author.lane),
+                                } as React.CSSProperties
+                            }
+                        />
+                        <span className="truncate font-medium text-foreground hover:underline">
+                            {item.author.name}
+                        </span>
+                    </Link>
+                </UserPreview>
             )}
             {item.bubbles.map((bubble, index) => {
                 const key =
@@ -1665,26 +1732,38 @@ function Composer({
                                     isCompact ? 'size-9' : 'size-10',
                                 )}
                             />
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                disabled={trimmed !== '' || hasImages}
-                                onClick={() => void voiceNote.start()}
-                                aria-label="Record a voice note"
-                                title={
-                                    trimmed !== '' || hasImages
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <span className="-mx-1 inline-flex shrink-0">
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            disabled={
+                                                trimmed !== '' || hasImages
+                                            }
+                                            onClick={() =>
+                                                void voiceNote.start()
+                                            }
+                                            aria-label="Record a voice note"
+                                            className={cn(
+                                                'text-muted-foreground',
+                                                isCompact
+                                                    ? 'size-9'
+                                                    : 'size-10',
+                                            )}
+                                            data-test="record-voice-note"
+                                        >
+                                            <Mic className="size-5" />
+                                        </Button>
+                                    </span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    {trimmed !== '' || hasImages
                                         ? 'Voice notes go on their own'
-                                        : 'Record a voice note, up to a minute'
-                                }
-                                className={cn(
-                                    '-mx-1 shrink-0 text-muted-foreground',
-                                    isCompact ? 'size-9' : 'size-10',
-                                )}
-                                data-test="record-voice-note"
-                            >
-                                <Mic className="size-5" />
-                            </Button>
+                                        : 'Record a voice note (max. 1 min)'}
+                                </TooltipContent>
+                            </Tooltip>
                             <div className="relative min-w-0 flex-1">
                                 <MentionTextarea
                                     id={id}
