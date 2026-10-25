@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as React from 'react';
 import type { ReactNode } from 'react';
 import { renderToString } from 'react-dom/server';
-import { afterEach, test, vi } from 'vite-plus/test';
+import { afterEach, beforeEach, test, vi } from 'vite-plus/test';
 import type { DateTimePreferences } from '../../resources/js/lib/date-time';
 import type { User } from '../../resources/js/types';
 
@@ -13,6 +13,14 @@ const auth = {
 };
 let server = false;
 const timezone = process.env.TZ;
+const DateTimeFormat = Intl.DateTimeFormat;
+
+beforeEach(() => {
+    // Fix the test locale while keeping the real hook and native date formatting.
+    vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(function (locales, options) {
+        return new DateTimeFormat(locales ?? 'en-US', options);
+    });
+});
 
 vi.doMock('react', () => ({
     ...React,
@@ -54,6 +62,7 @@ const { default: Links } = await import('../../resources/js/pages/links/index');
 
 afterEach(() => {
     vi.useRealTimers();
+    vi.restoreAllMocks();
     process.env.TZ = timezone;
     server = false;
 });

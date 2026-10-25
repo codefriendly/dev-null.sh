@@ -41,6 +41,7 @@ export function createDateTime(preferences: DateTimePreferences = {}) {
         } = {},
     ) => {
         const value = new Date(date);
+        // Keep month and weekday names in English; determine date order separately.
         const fields = formatter('en-US', {
             timeZone: options.timeZone,
             month: options.monthOnly ? 'long' : 'short',
@@ -76,6 +77,7 @@ export function createDateTime(preferences: DateTimePreferences = {}) {
             ...options,
             ...timeOptions(),
         }).format(new Date(date));
+    // This is an hour label, not an instant. UTC prevents timezone and DST shifts.
     const formatHour = (hour: number) =>
         formatter(preferences.locale, {
             hour: preferences.timeFormat === '24h' ? '2-digit' : 'numeric',
