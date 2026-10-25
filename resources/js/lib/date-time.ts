@@ -55,8 +55,11 @@ export function createDateTime(preferences: DateTimePreferences = {}) {
         const datePart = dayFirst()
             ? `${part('day')} ${part('month')}`
             : `${part('month')} ${part('day')}`;
-        const withYear =
-            options.year ?? value.getFullYear() !== new Date().getFullYear();
+        const currentYear = formatter('en-US', {
+            timeZone: options.timeZone,
+            year: 'numeric',
+        }).format(new Date());
+        const withYear = options.year ?? part('year') !== currentYear;
         return `${options.weekday ? `${part('weekday')}, ` : ''}${datePart}${withYear ? `${dayFirst() ? ' ' : ', '}${part('year')}` : ''}`;
     };
     const timeOptions = (): Intl.DateTimeFormatOptions =>
