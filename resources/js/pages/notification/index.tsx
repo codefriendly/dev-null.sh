@@ -865,9 +865,9 @@ export function NotificationContent({
                                 </span>
                                 <span
                                     className="hidden shrink-4 truncate font-mono text-[13px] text-muted-foreground sm:inline"
-                                    title={`@${actor.username}`}
+                                    title={`@${actor.handle}`}
                                 >
-                                    @{actor.username}
+                                    @{actor.handle}
                                 </span>
                             </Link>
                         </UserPreview>
@@ -918,9 +918,9 @@ export function NotificationContent({
                                 </span>
                                 <span
                                     className="hidden shrink-4 truncate font-mono text-[13px] text-muted-foreground sm:inline"
-                                    title={`@${actor.username}`}
+                                    title={`@${actor.handle}`}
                                 >
-                                    @{actor.username}
+                                    @{actor.handle}
                                 </span>
                             </UserPreview>
                             <span className="sr-only">
@@ -959,9 +959,9 @@ export function NotificationContent({
                 href={show(actor)}
                 tabIndex={-1}
                 className="relative z-10 shrink-4 truncate font-mono text-[13px] text-muted-foreground"
-                title={`@${actor.username}`}
+                title={`@${actor.handle}`}
             >
-                @{actor.username}
+                @{actor.handle}
             </Link>
         </>
     );
@@ -1159,9 +1159,9 @@ export function NotificationContent({
                                                             href={show(actor)}
                                                             tabIndex={-1}
                                                             className="relative z-10 inline-block max-w-full truncate align-bottom font-mono text-[13px] text-muted-foreground"
-                                                            title={`@${actor.username}`}
+                                                            title={`@${actor.handle}`}
                                                         >
-                                                            @{actor.username}
+                                                            @{actor.handle}
                                                         </Link>
                                                     </UserPreview>{' '}
                                                 </>

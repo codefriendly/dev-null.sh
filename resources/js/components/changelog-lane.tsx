@@ -57,7 +57,7 @@ export function ChangelogAuthorLink({
     onClick?: () => void;
     children: ReactNode;
 }) {
-    if (author.username === null) {
+    if (author.handle === null) {
         return (
             <span title={`@${author.login}`} className={className}>
                 {children}
@@ -66,15 +66,12 @@ export function ChangelogAuthorLink({
     }
 
     return (
-        <UserPreview
-            user={{ username: author.username }}
-            className="flex min-w-0"
-        >
+        <UserPreview user={{ handle: author.handle }} className="flex min-w-0">
             <Link
-                href={show({ username: author.username })}
+                href={show({ handle: author.handle })}
                 onClick={onClick}
                 aria-label={
-                    author.login === author.username
+                    author.login === author.handle
                         ? `${author.mention} on /dev/null`
                         : `@${author.login}, ${author.mention} on /dev/null`
                 }

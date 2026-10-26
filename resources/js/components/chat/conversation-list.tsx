@@ -104,7 +104,7 @@ function ConversationRow({
     const title =
         partner === null
             ? orgTitle(conversation, conversation.members, user)
-            : `@${partner.username}`;
+            : `@${partner.handle}`;
     const isMine = lastMessage?.user_id === user.id && !lastMessage.event;
     const lastBody =
         lastMessage?.body ||
@@ -191,9 +191,7 @@ function ConversationRow({
                             {partner.name}
                         </span>
                         <span className="flex min-w-0 shrink-4 items-center gap-1 font-mono text-xs text-muted-foreground">
-                            <span className="truncate">
-                                @{partner.username}
-                            </span>
+                            <span className="truncate">@{partner.handle}</span>
                         </span>
                     </span>
                 )}

@@ -336,7 +336,7 @@ test('bulk activity timeout deadlines follow viewer date and clock preferences',
                 {
                     user: {
                         id: 'bulk-user',
-                        username: 'bulk-user',
+                        handle: 'bulk-user',
                         name: 'Bulk User',
                     } as User,
                     count: 32,
