@@ -122,16 +122,20 @@ test('profile clocks use the viewer clock preference in the profile owner timezo
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-10-19T14:35:45Z'));
     auth.dateTime = { timeFormat: '24h' };
-    const clock = () => renderToString(<LocalTime timeZone="Asia/Kathmandu" />);
+    const clock = (as: 'li' | 'p' = 'li') =>
+        renderToString(<LocalTime timeZone="Asia/Kathmandu" as={as} />);
     const html = clock();
     assert.match(html, />20:20<\/time>/);
     assert.match(html, /UTC \+05:45/);
     assert.match(html, /dateTime="2026-10-19T14:35:00.000Z"/);
+    assert.match(clock('p'), /^<p[^>]*>.*>20:20<\/time>/);
 
     auth.dateTime = { timeFormat: '12h' };
     assert.match(clock(), />8:20\s*PM<\/time>/i);
+    assert.match(clock('p'), /^<p[^>]*>.*>8:20\s*PM<\/time>/i);
     server = true;
     assert.equal(clock(), '');
+    assert.equal(clock('p'), '');
 });
 
 test('forecast dates keep their UTC calendar day and follow viewer date order', () => {
@@ -417,6 +421,7 @@ test('metrics dates follow viewer date order without changing UTC buckets or dat
         funnel: {
             visitors: 10,
             signups: 3,
+            conversion_by_device: null,
             acquisition_by_day: [
                 {
                     date: '2026-10-19',
