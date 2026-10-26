@@ -75,7 +75,8 @@ const { PinnedBanner } =
 afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
-    process.env.TZ = timezone;
+    if (timezone === undefined) delete process.env.TZ;
+    else process.env.TZ = timezone;
     server = false;
 });
 
