@@ -71,6 +71,8 @@ const { OverviewEvents } =
 const { default: Links } = await import('../../resources/js/pages/links/index');
 const { PinnedBanner } =
     await import('../../resources/js/components/chat/pinned-messages');
+const { default: ScheduledCommits } =
+    await import('../../resources/js/pages/scheduled-commits/index');
 
 afterEach(() => {
     vi.useRealTimers();
@@ -136,6 +138,56 @@ test('profile clocks use the viewer clock preference in the profile owner timezo
     server = true;
     assert.equal(clock(), '');
     assert.equal(clock('p'), '');
+});
+
+test('scheduled dates and both action labels follow viewer preferences without changing the instant', () => {
+    process.env.TZ = 'Pacific/Honolulu';
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-26T12:00:00Z'));
+    const page = () =>
+        renderToString(
+            <TooltipProvider>
+                <ScheduledCommits
+                    scheduledCommits={{
+                        data: [
+                            {
+                                id: 'scheduled-review',
+                                body: null,
+                                body_segments: [],
+                                preview_segments: null,
+                                poll_options: null,
+                                image_count: 0,
+                                scheduled_at: '2026-12-19T00:35:00Z',
+                                submitted_at: null,
+                                status: 'scheduled',
+                            },
+                        ],
+                        prev_page_url: null,
+                        next_page_url: null,
+                    }}
+                />
+            </TooltipProvider>,
+        );
+    for (const [preferences, expected] of [
+        [{ dateFormat: 'day_first', timeFormat: '24h' }, '14:35 · 18 Dec 2026'],
+        [
+            { dateFormat: 'month_first', timeFormat: '12h' },
+            '2:35 PM · Dec 18, 2026',
+        ],
+    ] as const) {
+        auth.dateTime = preferences;
+        const html = page().replace(/\s+/g, ' ');
+        assert.ok(html.includes(`${expected}</time>`));
+        assert.ok(
+            html.includes(`aria-label="Commit now instead of at ${expected}"`),
+        );
+        assert.ok(
+            html.includes(
+                `aria-label="Cancel the commit scheduled for ${expected}"`,
+            ),
+        );
+        assert.match(html, /dateTime="2026-12-19T00:35:00Z"/);
+    }
 });
 
 test('forecast dates keep their UTC calendar day and follow viewer date order', () => {

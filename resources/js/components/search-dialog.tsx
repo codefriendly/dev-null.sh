@@ -1,6 +1,17 @@
 import { Link, router, usePage } from '@inertiajs/react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
-import { ArrowRight, History, Search, Sparkles } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import {
+    ArrowRight,
+    Bug,
+    History,
+    Lightbulb,
+    Radio,
+    Search,
+    Sparkles,
+    Square,
+    SquarePen,
+} from 'lucide-react';
 import type { KeyboardEvent, ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import CommitController from '@/actions/App/Http/Controllers/CommitController';
@@ -23,6 +34,8 @@ import {
     TooManySearches,
 } from '@/lib/commit-search';
 import { useKeyLabels } from '@/lib/keyboard';
+import type { SearchAction } from '@/lib/search-actions';
+import { searchActions } from '@/lib/search-actions';
 import {
     awaitsDeveloperName,
     searchesCommits,
@@ -44,6 +57,7 @@ const commitLimit = 5;
 type Found<T> = { term: string; items: T[]; throttled?: boolean };
 
 type Option =
+    | { kind: 'action'; id: string; action: SearchAction }
     | { kind: 'developer'; id: string; user: User; reason?: string | null }
     | { kind: 'commit'; id: string; commit: Commit }
     | { kind: 'all'; id: string }
@@ -58,18 +72,23 @@ const suggestionOptions: Option[] = suggestedQueries.map((term, index) => ({
 
 /**
  * Searches developers and commits. Picking a developer for a new conversation narrows it to developers, says why
- * anyone can't be messaged, and hands the pick back instead of opening their profile.
+ * anyone can't be messaged, and hands the pick back instead of opening their profile. Given `onAction`, it also offers
+ * to write a commit, open an issue or go live when the search names one, above what it found.
  */
 export function SearchDialog({
     open,
     onOpenChange,
     onPickDeveloper,
     excludeId,
+    onAction,
+    isLive = false,
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onPickDeveloper?: (user: User) => void;
     excludeId?: string;
+    onAction?: (action: SearchAction) => void;
+    isLive?: boolean;
 }) {
     const userId = usePage().props.auth.user?.id ?? null;
     const recentSearches = useRecentSearches(userId);
@@ -104,6 +123,7 @@ export function SearchDialog({
         intent === 'topic' ? visibleDevelopers.slice(0, 2) : visibleDevelopers,
         visibleCommits,
         commitTerm,
+        onAction && !isPicking ? searchActions(term, { isLive }) : [],
     );
     const isLoading = developers.isLoading || commits.isLoading;
     const hasSearched =
@@ -156,6 +176,12 @@ export function SearchDialog({
         }
 
         close();
+
+        if (option.kind === 'action') {
+            onAction?.(option.action);
+
+            return;
+        }
 
         if (option.kind === 'developer' && onPickDeveloper) {
             onPickDeveloper(option.user);
@@ -321,7 +347,7 @@ export function SearchDialog({
                                     isActive={index === activeIndex}
                                     onHover={() => setActiveIndex(index)}
                                     onOpen={close}
-                                    onPick={type}
+                                    onPick={() => openOption(option)}
                                     onPickDeveloper={
                                         onPickDeveloper &&
                                         ((user) => {
@@ -474,7 +500,13 @@ function optionsFor(
     developers: FoundDeveloper[],
     commits: Commit[],
     commitTerm: string,
+    actions: SearchAction[],
 ): Option[] {
+    const actionOptions: Option[] = actions.map((action) => ({
+        kind: 'action',
+        id: `action-${action}`,
+        action,
+    }));
     const developerOptions: Option[] = developers.map(({ user, reason }) => ({
         kind: 'developer',
         id: `developer-${user.id}`,
@@ -490,13 +522,19 @@ function optionsFor(
         commitTerm === '' ? [] : [{ kind: 'all', id: 'all' }];
 
     if (intent === 'topic') {
-        return [...commitOptions, ...seeAll, ...developerOptions];
+        return [
+            ...actionOptions,
+            ...commitOptions,
+            ...seeAll,
+            ...developerOptions,
+        ];
     }
 
-    return [...developerOptions, ...commitOptions, ...seeAll];
+    return [...actionOptions, ...developerOptions, ...commitOptions, ...seeAll];
 }
 
 const headings: Record<Option['kind'], ReactNode> = {
+    action: 'Actions',
     developer: 'Developers',
     commit: 'Most relevant commits',
     all: null,
@@ -525,7 +563,7 @@ function headingBefore(options: Option[], index: number): ReactNode {
 }
 
 function hrefFor(
-    option: Exclude<Option, { kind: 'suggestion' | 'recent' }>,
+    option: Exclude<Option, { kind: 'action' | 'suggestion' | 'recent' }>,
     term: string,
 ) {
     if (option.kind === 'developer') {
@@ -558,7 +596,7 @@ function ResultOption({
     isActive: boolean;
     onHover: () => void;
     onOpen: () => void;
-    onPick: (term: string) => void;
+    onPick: () => void;
     onPickDeveloper?: (user: User) => void;
 }) {
     const className = cn(
@@ -595,7 +633,8 @@ function ResultOption({
                 role="option"
                 aria-selected={isActive}
             >
-                {option.kind === 'suggestion' ||
+                {option.kind === 'action' ||
+                option.kind === 'suggestion' ||
                 option.kind === 'recent' ||
                 (option.kind === 'developer' && onPickDeveloper) ? (
                     <button
@@ -608,9 +647,7 @@ function ResultOption({
                         onClick={() =>
                             option.kind === 'developer'
                                 ? onPickDeveloper?.(option.user)
-                                : (option.kind === 'suggestion' ||
-                                      option.kind === 'recent') &&
-                                  onPick(option.term)
+                                : onPick()
                         }
                         className={className}
                     >
@@ -633,6 +670,10 @@ function ResultOption({
 }
 
 function OptionContent({ option }: { option: Option }): ReactNode {
+    if (option.kind === 'action') {
+        return <ActionResult action={option.action} />;
+    }
+
     if (option.kind === 'developer') {
         return <DeveloperResult user={option.user} reason={option.reason} />;
     }
@@ -659,6 +700,40 @@ function OptionContent({ option }: { option: Option }): ReactNode {
         <span className="flex min-w-0 flex-1 items-center gap-2 text-sm text-primary">
             See all matching commits
             <ArrowRight aria-hidden className="size-4" />
+        </span>
+    );
+}
+
+const actionLabels: Record<
+    SearchAction,
+    { label: string; icon: LucideIcon; command?: string }
+> = {
+    commit: { label: 'Write a commit', icon: SquarePen },
+    feature: {
+        label: 'Request a feature',
+        icon: Lightbulb,
+        command: '/feature',
+    },
+    bug: { label: 'Report a bug', icon: Bug, command: '/bug' },
+    'go-live': { label: 'Go live', icon: Radio },
+    'end-stream': { label: 'End stream', icon: Square },
+};
+
+function ActionResult({ action }: { action: SearchAction }) {
+    const { label, icon: Icon, command } = actionLabels[action];
+
+    return (
+        <span className="flex min-w-0 flex-1 items-center gap-3 text-sm">
+            <Icon
+                aria-hidden
+                className="size-4 shrink-0 text-muted-foreground"
+            />
+            <span className="truncate">{label}</span>
+            {command && (
+                <span className="ml-auto shrink-0 font-mono text-[13px] text-muted-foreground">
+                    {command}
+                </span>
+            )}
         </span>
     );
 }
