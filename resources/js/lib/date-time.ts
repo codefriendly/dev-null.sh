@@ -72,14 +72,25 @@ export function createDateTime(preferences: DateTimePreferences = {}) {
         date: string | Date,
         timeZone?: string,
         options: Intl.DateTimeFormatOptions = {},
-    ) =>
-        formatter(preferences.locale, {
+    ) => {
+        const value = new Date(date);
+        const time = formatter(preferences.locale, {
             hour: preferences.timeFormat === '24h' ? '2-digit' : 'numeric',
             minute: '2-digit',
             timeZone,
             ...options,
             ...timeOptions(),
-        }).format(new Date(date));
+        });
+        if (!options.weekday) return time.format(value);
+        const weekday = formatter('en-US', {
+            weekday: options.weekday,
+            timeZone: options.timeZone ?? timeZone,
+        }).format(value);
+        return time
+            .formatToParts(value)
+            .map((part) => (part.type === 'weekday' ? weekday : part.value))
+            .join('');
+    };
     // This is an hour label, not an instant. UTC prevents timezone and DST shifts.
     const formatHour = (hour: number) =>
         formatter(preferences.locale, {

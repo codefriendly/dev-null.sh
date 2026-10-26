@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\Log;
 use App\Http\Controllers\AboutController;
+use App\Http\Controllers\AppController;
 use App\Http\Controllers\BanController;
 use App\Http\Controllers\BannedController;
 use App\Http\Controllers\BrandController;
@@ -38,6 +39,7 @@ use App\Http\Controllers\ConversationMergeController;
 use App\Http\Controllers\ConversationMessageController;
 use App\Http\Controllers\ConversationMuteController;
 use App\Http\Controllers\ConversationPinController;
+use App\Http\Controllers\ConversationPingController;
 use App\Http\Controllers\ConversationReadController;
 use App\Http\Controllers\ConversationTypingController;
 use App\Http\Controllers\DeviceController;
@@ -60,6 +62,7 @@ use App\Http\Controllers\MentionController;
 use App\Http\Controllers\MentionSuggestionController;
 use App\Http\Controllers\MessageImageController;
 use App\Http\Controllers\MessageLinkPreviewController;
+use App\Http\Controllers\MessagePinController;
 use App\Http\Controllers\MessageReactionController;
 use App\Http\Controllers\MessageVoiceController;
 use App\Http\Controllers\MobileAuthorizationController;
@@ -76,10 +79,12 @@ use App\Http\Controllers\OrgMemberController;
 use App\Http\Controllers\OrgMessageController;
 use App\Http\Controllers\OrgMuteController;
 use App\Http\Controllers\OrgPinController;
+use App\Http\Controllers\OrgPingController;
 use App\Http\Controllers\OrgReadController;
 use App\Http\Controllers\OrgTypingController;
 use App\Http\Controllers\PrivacyController;
 use App\Http\Controllers\ProductMetricsController;
+use App\Http\Controllers\PushSubscriptionController;
 use App\Http\Controllers\RemoteCandidateController;
 use App\Http\Controllers\ReportedCommitController;
 use App\Http\Controllers\SafetyController;
@@ -122,6 +127,8 @@ use App\Http\Controllers\UserTranslationLanguageController;
 use App\Http\Middleware\PreventPostingInTimeout;
 use App\Http\Middleware\RememberIntendedUrl;
 use App\Http\Middleware\RequireCommitRules;
+use App\Http\Middleware\SerializePushSessions;
+use App\Http\Middleware\SerializePushSubscriptions;
 use App\Http\Middleware\ThrottleCommits;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Support\Facades\Route;
@@ -170,6 +177,10 @@ Route::get('about', [AboutController::class, 'show'])->name('about.show');
 
 // Logos, colors, and backgrounds, downloadable by everyone...
 Route::get('brand', [BrandController::class, 'show'])->name('brand.show');
+
+// The apps, downloadable by everyone, where the Mac app's first page used to be too...
+Route::get('apps', [AppController::class, 'index'])->name('app.index');
+Route::get('mac', fn () => to_route('app.index', status: 301));
 
 // What was merged into production, readable by everyone...
 Route::get('changelog', [ChangelogController::class, 'index'])->name('changelog.index');
@@ -260,7 +271,12 @@ Route::middleware('auth')->group(function (): void {
         ->name('issue.store');
 
     // Session...
+    Route::get('push-subscriptions', [PushSubscriptionController::class, 'index'])->name('push-subscription.index');
+    Route::post('push-subscriptions', [PushSubscriptionController::class, 'store'])->middleware(['throttle:30,1', SerializePushSessions::class, SerializePushSubscriptions::class])->name('push-subscription.store');
+    Route::delete('push-subscriptions', [PushSubscriptionController::class, 'destroy'])->middleware(SerializePushSessions::class)->name('push-subscription.destroy');
+
     Route::post('logout', [SessionController::class, 'destroy'])
+        ->middleware(SerializePushSessions::class)
         ->name('logout');
 
     // Banned, where a banned user is sent from everywhere else...
@@ -383,9 +399,25 @@ Route::middleware('auth')->group(function (): void {
             ->name('message-reaction.destroy');
     });
 
+    Route::put('remotes/messages/{message}/pin', [MessagePinController::class, 'update'])
+        ->whereNumber('message')
+        ->middleware([PreventPostingInTimeout::class, 'throttle:pins'])
+        ->name('message-pin.update');
+    Route::delete('remotes/messages/{message}/pin', [MessagePinController::class, 'destroy'])
+        ->whereNumber('message')
+        ->middleware('throttle:pins')
+        ->name('message-pin.destroy');
+
     Route::post('remotes/@{partner:username}/messages', [ConversationMessageController::class, 'store'])
         ->middleware([PreventPostingInTimeout::class, 'throttle:messages'])
         ->name('conversation-message.store');
+    Route::post('remotes/@{partner:username}/ping', [ConversationPingController::class, 'store'])
+        ->middleware([PreventPostingInTimeout::class, 'throttle:pings'])
+        ->name('conversation-ping.store');
+    Route::post('remotes/orgs/{org}/ping', [OrgPingController::class, 'store'])
+        ->whereUuid('org')
+        ->middleware([PreventPostingInTimeout::class, 'throttle:pings'])
+        ->name('org-ping.store');
     Route::post('remotes/orgs/{org}/messages', [OrgMessageController::class, 'store'])
         ->whereUuid('org')
         ->middleware([PreventPostingInTimeout::class, 'throttle:messages'])

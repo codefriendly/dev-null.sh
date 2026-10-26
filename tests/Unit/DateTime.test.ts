@@ -44,6 +44,20 @@ void test('browser defaults detect order and clock while keeping months English'
     assert.equal(french.formatDate(instant, { year: true }), '19 Oct 2026');
     assert.equal(french.formatTime(instant), '14:35');
     assert.equal(
+        french.formatTime('2026-10-19T00:35:00Z', 'Pacific/Honolulu', {
+            weekday: 'short',
+        }),
+        'Sun 14:35',
+    );
+    assert.match(
+        createDateTime({ locale: 'fr-FR', timeFormat: '12h' }).formatTime(
+            '2026-10-19T00:35:00Z',
+            'Asia/Tokyo',
+            { weekday: 'long', timeZone: 'Pacific/Honolulu' },
+        ),
+        /^Sunday 2:35\s*PM$/,
+    );
+    assert.equal(
         french.formatDate(instant, { monthOnly: true }),
         'October 2026',
     );

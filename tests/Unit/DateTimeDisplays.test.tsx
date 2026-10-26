@@ -12,14 +12,18 @@ const auth = {
     dateTime: {} as DateTimePreferences,
 };
 let server = false;
+let browserLocale = 'en-US';
 const timezone = process.env.TZ;
 const DateTimeFormat = Intl.DateTimeFormat;
 
 beforeEach(() => {
+    browserLocale = 'en-US';
     // Fix the test locale while keeping the real hook and native date formatting.
-    vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(function (locales, options) {
-        return new DateTimeFormat(locales ?? 'en-US', options);
-    });
+    vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(
+        function (locales, options) {
+            return new DateTimeFormat(locales ?? browserLocale, options);
+        },
+    );
 });
 
 vi.doMock('react', () => ({
@@ -35,6 +39,12 @@ vi.doMock('@inertiajs/react', async () => ({
     usePage: () => ({ props: { auth } }),
     Head: () => null,
     Deferred: ({ children }: { children: ReactNode }) => children,
+}));
+// Render the pinned panel's contents without a browser portal.
+vi.doMock('../../resources/js/components/ui/popover', () => ({
+    Popover: ({ children }: { children: ReactNode }) => children,
+    PopoverTrigger: ({ children }: { children: ReactNode }) => children,
+    PopoverContent: ({ children }: { children: ReactNode }) => children,
 }));
 
 const { LocalTime } = await import('../../resources/js/components/local-time');
@@ -59,12 +69,52 @@ const { FailedJobsPanel } =
 const { OverviewEvents } =
     await import('../../resources/js/components/operations/overview-events');
 const { default: Links } = await import('../../resources/js/pages/links/index');
+const { PinnedBanner } =
+    await import('../../resources/js/components/chat/pinned-messages');
 
 afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
     process.env.TZ = timezone;
     server = false;
+});
+
+test('pinned message dates and times follow viewer preferences without changing the instant', () => {
+    process.env.TZ = 'Pacific/Honolulu';
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-26T12:00:00Z'));
+    const panel = () =>
+        renderToString(
+            <PinnedBanner
+                messages={[
+                    {
+                        id: 17,
+                        user_id: 'author',
+                        client_id: 'pinned-message',
+                        body: 'A pinned message',
+                        created_at: '2026-10-20T00:35:00Z',
+                    },
+                ]}
+                user={{ id: 'viewer' } as User}
+                authorOf={() => ({
+                    name: 'Author',
+                    lane: 'violet',
+                    isMe: false,
+                })}
+                boundary={{ current: null }}
+                isCompact={false}
+                usage={[]}
+                onReply={null}
+                onReact={null}
+                onUnpin={null}
+                onEmptied={() => {}}
+            />,
+        ).replaceAll('<!-- -->', '');
+    auth.dateTime = { dateFormat: 'day_first', timeFormat: '24h' };
+    assert.match(panel(), /Mon, 19 Oct · 14:35<\/time>/);
+    assert.match(panel(), /dateTime="2026-10-20T00:35:00Z"/);
+    auth.dateTime = { dateFormat: 'month_first', timeFormat: '12h' };
+    assert.match(panel(), /Mon, Oct 19 · 2:35\s*PM<\/time>/i);
 });
 
 test('profile clocks use the viewer clock preference in the profile owner timezone', () => {
@@ -168,6 +218,9 @@ test('event logs keep seconds and local grouping while chart days stay UTC', () 
     assert.match(page(), /dateTime="2026-10-19T00:35:47Z"/);
     props.filters.window = '7d';
     assert.match(page(), /Sun 2:00\s*PM/);
+    browserLocale = 'fr-FR';
+    assert.match(page(), /Sun 2:00\s*PM/);
+    browserLocale = 'en-US';
     auth.dateTime = { dateFormat: 'month_first', timeFormat: '24h' };
     props.filters.window = '30d';
     assert.match(page(), />14:35:47<\/time>/);
