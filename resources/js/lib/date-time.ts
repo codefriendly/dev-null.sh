@@ -144,6 +144,9 @@ export function createDateTime(preferences: DateTimePreferences = {}) {
         formatRelativeTime,
         formatZonedTime: formatTime,
         formatZonedDate: (date: string, timeZone: string) =>
-            formatDate(date, { timeZone }),
+            formatDate(date, {
+                timeZone,
+                year: new Date(date).getFullYear() !== new Date().getFullYear(),
+            }),
     };
 }

@@ -167,11 +167,7 @@ export function SchedulePicker({
                         >
                             <SelectValue placeholder="Hour" />
                         </SelectTrigger>
-                        <SelectContent
-                            className="max-h-60"
-                            avoidCollisions
-                            collisionPadding={16}
-                        >
+                        <SelectContent className="max-h-60">
                             {hours.map((hour) => (
                                 <SelectItem
                                     key={hour}
@@ -209,11 +205,7 @@ export function SchedulePicker({
                         >
                             <SelectValue placeholder="Min" />
                         </SelectTrigger>
-                        <SelectContent
-                            className="max-h-60"
-                            avoidCollisions
-                            collisionPadding={16}
-                        >
+                        <SelectContent className="max-h-60">
                             {minutes.map((minute) => (
                                 <SelectItem
                                     key={minute}

@@ -73,6 +73,8 @@ const { PinnedBanner } =
     await import('../../resources/js/components/chat/pinned-messages');
 const { default: ScheduledCommits } =
     await import('../../resources/js/pages/scheduled-commits/index');
+const { default: SiteActivity } =
+    await import('../../resources/js/pages/operations/activity');
 
 afterEach(() => {
     vi.useRealTimers();
@@ -80,6 +82,34 @@ afterEach(() => {
     if (timezone === undefined) delete process.env.TZ;
     else process.env.TZ = timezone;
     server = false;
+});
+
+test('overall activity dates follow viewer date order without shifting the UTC calendar day', () => {
+    process.env.TZ = 'Pacific/Honolulu';
+    const props: Parameters<typeof SiteActivity>[0] = {
+        today: {
+            signups: { today: 2, yesterday: 1 },
+            commits: { today: 5, yesterday: 3 },
+            replies: { today: 4, yesterday: 2 },
+            authors: { today: 3, yesterday: 2 },
+        },
+        overall: {
+            since: '2026-10-19',
+            signups: 1240,
+            commits: 18325,
+            replies: 6427,
+            authors: 893,
+        },
+        activity: { metric: 'commits', scale: 'week', buckets: [] },
+        breakdowns: { statuses: [], authors: [] },
+    };
+    const page = () => renderToString(<SiteActivity {...props} />);
+    auth.dateTime = { dateFormat: 'day_first' };
+    assert.match(page(), /since 19 Oct 2026/);
+    auth.dateTime = { dateFormat: 'month_first' };
+    assert.match(page(), /since Oct 19, 2026/);
+    props.overall.since = null;
+    assert.match(page(), />all time<\/p>/);
 });
 
 test('pinned message dates and times follow viewer preferences without changing the instant', () => {

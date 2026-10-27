@@ -133,16 +133,16 @@ void test('UTC date-only activity and changelog dates do not shift with viewer t
     );
 });
 
-void test('zoned dates compare years in the display timezone and honor year overrides', (t) => {
+void test('zoned dates preserve browser-local year omission and honor date order', (t) => {
     t.mock.timers.enable({ apis: ['Date'], now: Date.parse('2027-01-01T12:00:00Z') });
     const cases = [
-        ['2027-01-01T12:00:00Z', '2027-01-01T00:30:00Z', 'Pacific/Honolulu', '31 Dec', 'Dec 31', '2026', true],
-        ['2026-12-31T09:00:00Z', '2026-12-31T11:00:00Z', 'Pacific/Kiritimati', '1 Jan', 'Jan 1', '2027', true],
-        ['2027-01-01T00:30:00Z', '2026-12-31T23:30:00Z', 'Pacific/Honolulu', '31 Dec', 'Dec 31', '2026', false],
-        ['2026-12-31T11:00:00Z', '2027-01-01T00:30:00Z', 'Pacific/Kiritimati', '1 Jan', 'Jan 1', '2027', false],
+        ['2027-01-01T12:00:00Z', '2027-01-01T00:30:00Z', 'Pacific/Honolulu', '31 Dec', 'Dec 31', '2026', false],
+        ['2026-12-31T09:00:00Z', '2026-12-31T11:00:00Z', 'Pacific/Kiritimati', '1 Jan', 'Jan 1', '2027', false],
+        ['2027-01-01T00:30:00Z', '2026-12-31T23:30:00Z', 'Pacific/Honolulu', '31 Dec', 'Dec 31', '2026', true],
+        ['2026-12-31T11:00:00Z', '2027-01-01T00:30:00Z', 'Pacific/Kiritimati', '1 Jan', 'Jan 1', '2027', true],
     ] as const;
 
-    for (const dateFormat of ['day_first', 'month_first'] as const) {
+    for (const dateFormat of [null, 'day_first', 'month_first'] as const) {
         const format = createDateTime({ dateFormat, locale: 'en-US' });
         for (const [now, date, timeZone, dayFirst, monthFirst, year, includeYear] of cases) {
             t.mock.timers.setTime(Date.parse(now));

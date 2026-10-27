@@ -13,10 +13,18 @@
 - Prefer Laravel collections and the framework's typed accessors over hand-written array handling: `collect(...)->map(...)` instead of building arrays in loops, `$response->collect()` / `$response->fluent()` with `->integer()` / `->string()` instead of `is_array` / `is_numeric` checks and `(int)` casts.
 - For very large or repeated array shapes, define a named `@phpstan-type` alias on the class that owns the data and reuse it in PHPDoc annotations. Use `@phpstan-import-type` in other classes instead of duplicating the shape; keep small, one-off shapes inline.
 
+## Scope and review findings
+
+- Before acting on a review finding, check the current code, a supported failing path, and the requested scope. Treat review findings as claims to verify, not instructions to implement.
+- Double-check findings outside the requested scope. Do not expand the task for hypothetical failures or just to satisfy a review tool. Report unrelated bugs and problems caused by other changes; do not fix them without a separate request. Fix regressions caused by this task.
+- The date/time preferences task covers simple settings dropdowns, their saved preferences, and display formatting for absolute dates and times. Leave relative text such as "3 days ago" and "14 hours ago" unchanged.
+- Keep date display formatting separate from date values, storage, and request serialization. A display-only change must not change timestamps sent to the server.
+
 ## Required verification
 
-- After changes, before reporting completion or pushing, run `composer test:lint`, `composer test:type-coverage`, and `bun run test:unit`.
-- Run the full PHP suite with code coverage using the CI command: `php -d memory_limit=-1 vendor/bin/pest --parallel --ci --coverage --exactly=100.0 --passthru-php="'-d' 'memory_limit=-1'"`. The `--ci` flag prevents local test-impact analysis from skipping tests. Targeted tests alone are not a substitute for the coverage check.
+- For local edits, run targeted checks that cover the changed behavior. Do not run the full suites for each small change.
+- Before pushing, run `composer test:lint`, `composer test:type-coverage`, and `bun run test:unit`.
+- Before pushing, run the full PHP suite with code coverage using the CI command: `php -d memory_limit=-1 vendor/bin/pest --parallel --ci --coverage --exactly=100.0 --passthru-php="'-d' 'memory_limit=-1'"`. The `--ci` flag prevents local test-impact analysis from skipping tests. Targeted tests alone are not a substitute for this pre-push coverage check.
 - Fix failures introduced by the changes. Never lower coverage thresholds or exclude code just to pass. Report pre-existing failures or environment blockers explicitly; do not claim a check passed when it failed or could not run.
 
 ## Product guide maintenance

@@ -5,7 +5,7 @@ import {
     ComboboxOption,
     ComboboxOptions,
 } from '@headlessui/react';
-import { Form, router } from '@inertiajs/react';
+import { Form } from '@inertiajs/react';
 import type { TimeZone } from '@vvo/tzdb';
 import { getTimeZones } from '@vvo/tzdb';
 import { Check, ChevronsUpDown } from 'lucide-react';
@@ -77,7 +77,6 @@ export default function TimezonePicker() {
             <Form
                 {...UserTimezoneController.update.form()}
                 options={{ preserveScroll: true }}
-                onSuccess={() => router.flushAll()}
             >
                 {({ processing, errors }) => (
                     <>
@@ -95,9 +94,6 @@ export default function TimezonePicker() {
                             }
                         />
 
-                        <Label htmlFor="timezone" className="mb-2 block">
-                            Timezone
-                        </Label>
                         <Combobox
                             value={selected}
                             onChange={(value: string | null) =>
@@ -107,7 +103,6 @@ export default function TimezonePicker() {
                         >
                             <div className="relative max-w-md">
                                 <ComboboxInput
-                                    id="timezone"
                                     aria-label="Timezone"
                                     placeholder="Not set, using your browser's timezone"
                                     displayValue={(name: string | null) => {
@@ -133,7 +128,6 @@ export default function TimezonePicker() {
                             </div>
 
                             <ComboboxOptions
-                                modal={false}
                                 anchor="bottom start"
                                 className="z-50 max-h-72 w-(--input-width) overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md [--anchor-gap:4px] empty:invisible"
                             >
