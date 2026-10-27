@@ -110,10 +110,12 @@ use App\Http\Controllers\UserDateTimeController;
 use App\Http\Controllers\UserFeedController;
 use App\Http\Controllers\UserFollowController;
 use App\Http\Controllers\UserFollowersController;
+use App\Http\Controllers\UserFollowersYouKnowController;
 use App\Http\Controllers\UserFollowingController;
 use App\Http\Controllers\UserLaneController;
 use App\Http\Controllers\UserLiveController;
 use App\Http\Controllers\UserMuteController;
+use App\Http\Controllers\UserMutualsController;
 use App\Http\Controllers\UserOpenGraphImageController;
 use App\Http\Controllers\UserPasteisModeController;
 use App\Http\Controllers\UserPreviewController;
@@ -193,6 +195,8 @@ Route::middleware(RememberIntendedUrl::class)->group(function (): void {
         ->name('user-following.index');
     Route::get('@{user:handle}/followers', [UserFollowersController::class, 'index'])
         ->name('user-followers.index');
+    Route::get('@{user:handle}/mutuals', [UserMutualsController::class, 'index'])
+        ->name('user-mutuals.index');
     Route::get('@{user:handle}/commits/{commit}', [CommitController::class, 'show'])
         ->scopeBindings()
         ->name('commit.show');
@@ -268,7 +272,7 @@ Route::get('search/commits', [CommitSearchController::class, 'index'])
 
 Route::middleware('auth')->group(function (): void {
     Route::post('issues', [IssueController::class, 'store'])
-        ->middleware('throttle:10,1')
+        ->middleware([PreventPostingInTimeout::class, 'throttle:10,1'])
         ->name('issue.store');
 
     // Session...
@@ -282,6 +286,10 @@ Route::middleware('auth')->group(function (): void {
 
     // Banned, where a banned user is sent from everywhere else...
     Route::get('banned', [BannedController::class, 'show'])->name('banned.show');
+
+    // Followers the viewer knows...
+    Route::get('@{user:handle}/followers-you-know', [UserFollowersYouKnowController::class, 'index'])
+        ->name('user-followers-you-know.index');
 
     // Onboarding...
     Route::get('onboarding', [OnboardingController::class, 'show'])->name('onboarding.show');
@@ -498,7 +506,9 @@ Route::middleware('auth')->group(function (): void {
     Route::put('settings/remotes', [UserRemotesController::class, 'update'])->name('user-remotes.update');
 
     // User Live...
-    Route::put('settings/live', [UserLiveController::class, 'update'])->name('user-live.update');
+    Route::put('settings/live', [UserLiveController::class, 'update'])
+        ->middleware(PreventPostingInTimeout::class)
+        ->name('user-live.update');
     Route::delete('settings/live', [UserLiveController::class, 'destroy'])->name('user-live.destroy');
 
     // Appearance...

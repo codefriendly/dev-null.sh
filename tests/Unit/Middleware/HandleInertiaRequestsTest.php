@@ -10,6 +10,7 @@ use App\Models\Notification;
 use App\Models\User;
 use App\Queries\SuggestedUsersQuery;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 
 it('shares app name from config', function (): void {
@@ -261,6 +262,49 @@ it('does not dim lanes when disabled', function (): void {
 
     expect($shared['dimsLanes'])->toBeFalse();
 });
+
+it('shares the moment the page is rendered, which relative times count from on the server and while hydrating', function (): void {
+    $this->travelTo(Date::parse('2026-10-24T12:34:56.789Z'));
+
+    $shared = new HandleInertiaRequests()->share(Request::create('/', 'GET'));
+
+    expect($shared['now'])->toBe(1792845296789);
+});
+
+it("shares the reader's clock their browser left in cookies, so the server shows times as the browser will", function (?string $timeZone, ?string $hourCycle, array $clock, mixed $dateOrder = null): void {
+    $middleware = new HandleInertiaRequests();
+
+    $request = Request::create('/', 'GET');
+
+    if ($timeZone !== null) {
+        $request->cookies->set('time_zone', $timeZone);
+    }
+
+    if ($hourCycle !== null) {
+        $request->cookies->set('hour_cycle', $hourCycle);
+    }
+
+    $request->cookies->set('date_order', $dateOrder);
+
+    $shared = $middleware->share($request);
+
+    expect($shared['clock'])->toBe($clock + ['dateOrder' => null]);
+})->with([
+    'unknown on a first visit' => [null, null, ['timeZone' => null, 'hourCycle' => null]],
+    'both' => ['Pacific/Auckland', 'h23', ['timeZone' => 'Pacific/Auckland', 'hourCycle' => 'h23']],
+    'a 12-hour clock' => ['America/New_York', 'h12', ['timeZone' => 'America/New_York', 'hourCycle' => 'h12']],
+    'a former name browsers still report' => ['Asia/Calcutta', 'h12', ['timeZone' => 'Asia/Calcutta', 'hourCycle' => 'h12']],
+    'the current name of a former name' => ['Asia/Kolkata', 'h12', ['timeZone' => 'Asia/Kolkata', 'hourCycle' => 'h12']],
+    'a legacy regional alias' => ['US/Eastern', 'h12', ['timeZone' => 'US/Eastern', 'hourCycle' => 'h12']],
+    'a custom offset rather than a system time zone' => ['GMT+05:00', 'h23', ['timeZone' => null, 'hourCycle' => 'h23']],
+    'UTC' => ['UTC', 'h23', ['timeZone' => 'UTC', 'hourCycle' => 'h23']],
+    'not a time zone' => ['Mars/Olympus', 'h23', ['timeZone' => null, 'hourCycle' => 'h23']],
+    'not an hour cycle' => ['Europe/Paris', 'h25', ['timeZone' => 'Europe/Paris', 'hourCycle' => null]],
+    'day first' => ['UTC', 'h23', ['timeZone' => 'UTC', 'hourCycle' => 'h23', 'dateOrder' => 'day_first'], 'day_first'],
+    'month first' => ['UTC', 'h23', ['timeZone' => 'UTC', 'hourCycle' => 'h23', 'dateOrder' => 'month_first'], 'month_first'],
+    'not a date order' => ['UTC', 'h23', ['timeZone' => 'UTC', 'hourCycle' => 'h23'], 'unknown'],
+    'not a date order string' => ['UTC', 'h23', ['timeZone' => 'UTC', 'hourCycle' => 'h23'], []],
+]);
 
 it('shows 3 replies at a time unless the user picked one of the other counts', function (string $cookie, int $count): void {
     $middleware = new HandleInertiaRequests();

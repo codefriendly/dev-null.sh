@@ -1186,7 +1186,7 @@ export function NotificationContent({
                             </>
                         )}
                         {excerpt}
-                        {quote && <div className="relative z-10">{quote}</div>}
+                        {quote}
                         {reason}
                     </div>
                     {notification.type === 'followed' && actorsCount === 1 && (

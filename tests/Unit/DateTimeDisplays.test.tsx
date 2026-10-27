@@ -75,8 +75,11 @@ const { default: ScheduledCommits } =
     await import('../../resources/js/pages/scheduled-commits/index');
 const { default: SiteActivity } =
     await import('../../resources/js/pages/operations/activity');
+const { browserClock, setReaderClock } =
+    await import('../../resources/js/lib/utils');
 
 afterEach(() => {
+    setReaderClock(null);
     vi.useRealTimers();
     vi.restoreAllMocks();
     if (timezone === undefined) delete process.env.TZ;
@@ -114,6 +117,7 @@ test('overall activity dates follow viewer date order without shifting the UTC c
 
 test('pinned message dates and times follow viewer preferences without changing the instant', () => {
     process.env.TZ = 'Pacific/Honolulu';
+    setReaderClock(browserClock());
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-10-26T12:00:00Z'));
     const panel = () =>
@@ -172,6 +176,7 @@ test('profile clocks use the viewer clock preference in the profile owner timezo
 
 test('scheduled dates and both action labels follow viewer preferences without changing the instant', () => {
     process.env.TZ = 'Pacific/Honolulu';
+    setReaderClock(browserClock());
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-10-26T12:00:00Z'));
     const page = () =>
@@ -262,6 +267,7 @@ test('forecast dates keep their UTC calendar day and follow viewer date order', 
 
 test('event logs keep seconds and local grouping while chart days stay UTC', () => {
     process.env.TZ = 'Pacific/Honolulu';
+    setReaderClock(browserClock());
     const props: Parameters<typeof Events>[0] = {
         events: [
             {

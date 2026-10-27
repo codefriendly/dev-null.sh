@@ -2,10 +2,34 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { changelogDayHeading } from '../../resources/js/lib/changelog.ts';
 import { createDateTime } from '../../resources/js/lib/date-time.ts';
+import { setReaderClock } from '../../resources/js/lib/utils.ts';
 
 process.env.TZ = 'UTC';
 
 const instant = '2026-10-19T14:35:00Z';
+
+void test('browser defaults use shared display metadata and account preferences override it', () => {
+    setReaderClock({
+        timeZone: 'Pacific/Honolulu',
+        hourCycle: 'h23',
+        dateOrder: 'day_first',
+    });
+    try {
+        const date = '2026-10-19T00:35:00Z';
+        const defaults = createDateTime();
+        assert.equal(defaults.formatFullDateTime(date), '14:35 · 18 Oct 2026');
+        assert.equal(defaults.formatHour(0), '00');
+        const preferences = createDateTime({
+            dateFormat: 'month_first',
+            timeFormat: '12h',
+        });
+        assert.equal(preferences.formatFullDateTime(date), '2:35 PM · Oct 18, 2026');
+        assert.equal(preferences.formatFullDateTime(date, 'UTC'), '12:35 AM · Oct 19, 2026');
+        assert.equal(defaults.formatDayLabel(date, new Date('2026-10-19T01:00:00Z')), 'Today');
+    } finally {
+        setReaderClock(null);
+    }
+});
 
 void test('date order and clock format are independent overrides', () => {
     const dayFirst = createDateTime({
@@ -80,6 +104,7 @@ void test('relative labels stay short but their absolute fallback follows prefer
 
 void test('format preferences preserve browser-local days and year omission at midnight', () => {
     process.env.TZ = 'America/Los_Angeles';
+    setReaderClock({ timeZone: 'America/Los_Angeles', hourCycle: 'h12' });
     try {
         const now = new Date('2027-01-01T01:00:00Z');
         for (const dateFormat of [null, 'month_first', 'day_first'] as const) {
@@ -110,6 +135,7 @@ void test('format preferences preserve browser-local days and year omission at m
             );
         }
     } finally {
+        setReaderClock(null);
         process.env.TZ = 'UTC';
     }
 });
@@ -133,13 +159,13 @@ void test('UTC date-only activity and changelog dates do not shift with viewer t
     );
 });
 
-void test('zoned dates preserve browser-local year omission and honor date order', (t) => {
+void test('zoned dates preserve reader-clock year omission and honor date order', (t) => {
     t.mock.timers.enable({ apis: ['Date'], now: Date.parse('2027-01-01T12:00:00Z') });
     const cases = [
-        ['2027-01-01T12:00:00Z', '2027-01-01T00:30:00Z', 'Pacific/Honolulu', '31 Dec', 'Dec 31', '2026', false],
-        ['2026-12-31T09:00:00Z', '2026-12-31T11:00:00Z', 'Pacific/Kiritimati', '1 Jan', 'Jan 1', '2027', false],
-        ['2027-01-01T00:30:00Z', '2026-12-31T23:30:00Z', 'Pacific/Honolulu', '31 Dec', 'Dec 31', '2026', true],
-        ['2026-12-31T11:00:00Z', '2027-01-01T00:30:00Z', 'Pacific/Kiritimati', '1 Jan', 'Jan 1', '2027', true],
+        ['2027-01-01T12:00:00Z', '2027-01-01T00:30:00Z', 'Pacific/Honolulu', '31 Dec', 'Dec 31', '2026', true],
+        ['2026-12-31T09:00:00Z', '2026-12-31T11:00:00Z', 'Pacific/Kiritimati', '1 Jan', 'Jan 1', '2027', true],
+        ['2027-01-01T00:30:00Z', '2026-12-31T23:30:00Z', 'Pacific/Honolulu', '31 Dec', 'Dec 31', '2026', false],
+        ['2026-12-31T11:00:00Z', '2027-01-01T00:30:00Z', 'Pacific/Kiritimati', '1 Jan', 'Jan 1', '2027', false],
     ] as const;
 
     for (const dateFormat of [null, 'day_first', 'month_first'] as const) {

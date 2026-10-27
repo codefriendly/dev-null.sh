@@ -22,6 +22,7 @@ import { useNow } from '@/hooks/use-now';
 import AppLayout from '@/layouts/app-layout';
 import { backgroundPollOptions } from '@/lib/background-poll';
 import { emojify } from '@/lib/emoji';
+import { readerClock } from '@/lib/utils';
 import type { BodySegment } from '@/types';
 
 type ScheduledCommit = {
@@ -165,7 +166,7 @@ export default function Index({
                     not approval.
                 </p>
                 <p className="mt-2 font-mono text-xs text-muted-foreground">
-                    Times in {Intl.DateTimeFormat().resolvedOptions().timeZone}
+                    Times in {readerClock().timeZone}
                 </p>
             </div>
             {scheduledCommits.data.length === 0 ? (

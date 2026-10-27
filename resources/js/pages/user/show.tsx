@@ -21,6 +21,8 @@ import { BioText } from '@/components/bio-text';
 import { CommitFeed, EmptyFeed } from '@/components/commit-feed';
 import { EditProfileMenu } from '@/components/edit-profile-menu';
 import { FollowButton } from '@/components/follow-button';
+import { FollowersYouKnow } from '@/components/followers-you-know';
+import type { FollowersYouKnowPreview } from '@/components/followers-you-know';
 import { GitHubIcon } from '@/components/github-icon';
 import {
     LiveAvatarMarker,
@@ -65,6 +67,7 @@ export default function Show({
     isFollowing,
     followsYou,
     isMuting,
+    followersYouKnow,
     canPush,
     moderation,
     activity,
@@ -80,6 +83,7 @@ export default function Show({
     isFollowing: boolean;
     followsYou: boolean;
     isMuting: boolean;
+    followersYouKnow: FollowersYouKnowPreview | null;
     canPush: boolean;
     moderation: UserModeration | null;
     activity: Activity;
@@ -381,6 +385,9 @@ export default function Show({
                         </div>
                     ))}
                 </dl>
+                {followersYouKnow && (
+                    <FollowersYouKnow user={user} preview={followersYouKnow} />
+                )}
                 {auth.pasteis && pasteisReceived !== null && (
                     <p
                         className="mt-3 flex items-center gap-1.5 text-sm text-muted-foreground"

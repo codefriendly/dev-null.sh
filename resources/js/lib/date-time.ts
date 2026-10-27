@@ -1,3 +1,5 @@
+import { dayIn, readerClock } from './utils.ts';
+
 export type DateTimePreferences = {
     dateFormat?: 'month_first' | 'day_first' | null;
     timeFormat?: '12h' | '24h' | null;
@@ -22,6 +24,8 @@ export function createDateTime(preferences: DateTimePreferences = {}) {
     const dayFirst = () => {
         if (preferences.dateFormat != null)
             return preferences.dateFormat === 'day_first';
+        if (preferences.locale === undefined && readerClock().dateOrder != null)
+            return readerClock().dateOrder === 'day_first';
         const order = formatter(preferences.locale, {
             month: 'short',
             day: 'numeric',
@@ -43,7 +47,7 @@ export function createDateTime(preferences: DateTimePreferences = {}) {
         const value = new Date(date);
         // Keep month and weekday names in English; determine date order separately.
         const fields = formatter('en-US', {
-            timeZone: options.timeZone,
+            timeZone: options.timeZone ?? readerClock().timeZone,
             month: options.monthOnly ? 'long' : 'short',
             day: options.monthOnly ? undefined : 'numeric',
             year: 'numeric',
@@ -56,7 +60,7 @@ export function createDateTime(preferences: DateTimePreferences = {}) {
             ? `${part('day')} ${part('month')}`
             : `${part('month')} ${part('day')}`;
         const currentYear = formatter('en-US', {
-            timeZone: options.timeZone,
+            timeZone: options.timeZone ?? readerClock().timeZone,
             year: 'numeric',
         }).format(new Date());
         const withYear = options.year ?? part('year') !== currentYear;
@@ -67,24 +71,26 @@ export function createDateTime(preferences: DateTimePreferences = {}) {
             ? { hourCycle: 'h23' }
             : preferences.timeFormat === '12h'
               ? { hourCycle: 'h12' }
-              : {};
+              : preferences.locale !== undefined
+                ? {}
+                : { hourCycle: readerClock().hourCycle };
     const formatTime = (
         date: string | Date,
         timeZone?: string,
         options: Intl.DateTimeFormatOptions = {},
     ) => {
         const value = new Date(date);
-        const time = formatter(preferences.locale, {
+        const time = formatter(preferences.locale ?? 'en-US', {
             hour: preferences.timeFormat === '24h' ? '2-digit' : 'numeric',
             minute: '2-digit',
-            timeZone,
+            timeZone: timeZone ?? readerClock().timeZone,
             ...options,
             ...timeOptions(),
         });
         if (!options.weekday) return time.format(value);
         const weekday = formatter('en-US', {
             weekday: options.weekday,
-            timeZone: options.timeZone ?? timeZone,
+            timeZone: options.timeZone ?? timeZone ?? readerClock().timeZone,
         }).format(value);
         return time
             .formatToParts(value)
@@ -93,7 +99,7 @@ export function createDateTime(preferences: DateTimePreferences = {}) {
     };
     // This is an hour label, not an instant. UTC prevents timezone and DST shifts.
     const formatHour = (hour: number) =>
-        formatter(preferences.locale, {
+        formatter(preferences.locale ?? 'en-US', {
             hour: preferences.timeFormat === '24h' ? '2-digit' : 'numeric',
             timeZone: 'UTC',
             ...timeOptions(),
@@ -101,25 +107,19 @@ export function createDateTime(preferences: DateTimePreferences = {}) {
     const formatFullDateTime = (date: string, timeZone?: string) =>
         `${formatTime(date, timeZone)} · ${formatDate(date, { timeZone, year: true })}`;
     const formatDayLabel = (date: string, now: Date = new Date()) => {
-        const day = new Date(date);
-        const startOfToday = new Date(
-            now.getFullYear(),
-            now.getMonth(),
-            now.getDate(),
-        );
-        const startOfDay = new Date(
-            day.getFullYear(),
-            day.getMonth(),
-            day.getDate(),
-        );
+        const { timeZone } = readerClock();
+        const day = dayIn(new Date(date), timeZone);
+        const today = dayIn(now, timeZone);
         const daysAgo = Math.round(
-            (startOfToday.getTime() - startOfDay.getTime()) / 86_400_000,
+            (Date.UTC(today.year, today.month - 1, today.day) -
+                Date.UTC(day.year, day.month - 1, day.day)) /
+                86_400_000,
         );
         if (daysAgo === 0) return 'Today';
         if (daysAgo === 1) return 'Yesterday';
         return formatDate(date, {
             weekday: true,
-            year: day.getFullYear() !== now.getFullYear(),
+            year: day.year !== today.year,
         });
     };
     const formatRelativeTime = (date: string, now: Date = new Date()) => {
@@ -131,7 +131,9 @@ export function createDateTime(preferences: DateTimePreferences = {}) {
         if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
         if (seconds < 604800) return `${Math.floor(seconds / 86400)}d`;
         return formatDate(date, {
-            year: new Date(date).getFullYear() !== now.getFullYear(),
+            year:
+                dayIn(new Date(date), readerClock().timeZone).year !==
+                dayIn(now, readerClock().timeZone).year,
         });
     };
     return {
@@ -144,9 +146,6 @@ export function createDateTime(preferences: DateTimePreferences = {}) {
         formatRelativeTime,
         formatZonedTime: formatTime,
         formatZonedDate: (date: string, timeZone: string) =>
-            formatDate(date, {
-                timeZone,
-                year: new Date(date).getFullYear() !== new Date().getFullYear(),
-            }),
+            formatDate(date, { timeZone }),
     };
 }

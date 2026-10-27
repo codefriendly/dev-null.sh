@@ -2,7 +2,7 @@ import type { CSSProperties, MouseEvent, ReactNode } from 'react';
 import { useRef, useState } from 'react';
 import { useDateTime } from '@/hooks/use-date-time';
 import { exactCountTitle, formatCount } from '@/lib/numbers';
-import { cn } from '@/lib/utils';
+import { clockTimeOf, cn, localDayKey } from '@/lib/utils';
 import type { Activity, ActivityBucket, ActivityScale } from '@/types';
 
 export type ActivityNoun = [singular: string, plural: string];
@@ -89,7 +89,9 @@ function describe(
 
     const start = new Date(bucket.date);
     const end = new Date(start.getTime() + 3_600_000);
-    const isToday = start.toDateString() === new Date().toDateString();
+    const isToday =
+        localDayKey(start.toISOString()) ===
+        localDayKey(new Date().toISOString());
 
     return `${counted} between ${dateTime.formatTime(start)} and ${dateTime.formatTime(end)} ${isToday ? 'today' : 'yesterday'}`;
 }
@@ -121,7 +123,7 @@ function stripLabel(
     if (scale === 'day') {
         const start = new Date(bucket.date);
 
-        return start.getHours() % 6 === 0 && index < length - 2
+        return clockTimeOf(bucket.date).hour % 6 === 0 && index < length - 2
             ? dateTime.formatTime(start)
             : null;
     }

@@ -13,6 +13,106 @@ import { createDateTime } from './date-time.ts';
  */
 export const dateLocale = 'en-US';
 
+export type HourCycle = 'h11' | 'h12' | 'h23' | 'h24';
+
+/** The time zone times show in, and whether the hours run to 12 or to 24. */
+export type Clock = {
+    timeZone: string;
+    hourCycle: HourCycle;
+    dateOrder?: 'month_first' | 'day_first' | null;
+};
+
+/** The clock the server shares: the reader's, once their browser has told it. */
+export type SharedClock = {
+    timeZone: string | null;
+    hourCycle: HourCycle | null;
+    dateOrder?: 'month_first' | 'day_first' | null;
+};
+
+/** What the server renders with until the reader's browser has told it its clock. */
+const serverClock: Clock = {
+    timeZone: 'UTC',
+    hourCycle: 'h23',
+    dateOrder: 'month_first',
+};
+
+let currentClock: Clock | null = null;
+
+/** How this browser shows times: its time zone, and the hour cycle of its language. */
+export function browserClock(): Clock & {
+    dateOrder: 'month_first' | 'day_first';
+} {
+    const { timeZone, hourCycle } = new Intl.DateTimeFormat(undefined, {
+        hour: 'numeric',
+    }).resolvedOptions();
+
+    const parts = new Intl.DateTimeFormat(undefined, {
+        day: 'numeric',
+        month: 'short',
+    }).formatToParts(new Date());
+
+    return {
+        timeZone,
+        hourCycle: hourCycle ?? 'h23',
+        dateOrder:
+            parts.findIndex((part) => part.type === 'day') <
+            parts.findIndex((part) => part.type === 'month')
+                ? 'day_first'
+                : 'month_first',
+    };
+}
+
+export function clockOf(shared: SharedClock | undefined): Clock | null {
+    return shared?.timeZone && shared.hourCycle
+        ? { ...shared, timeZone: shared.timeZone, hourCycle: shared.hourCycle }
+        : null;
+}
+
+/**
+ * Sets the clock every time shows on, so the server renders a page with the clock the reader's browser hydrates it
+ * with. Null goes back to the browser's own, or to UTC on the server.
+ */
+export function setReaderClock(clock: Clock | null): void {
+    currentClock = clock;
+}
+
+export function readerClock(): Clock {
+    return (
+        currentClock ??
+        (typeof window === 'undefined' ? serverClock : browserClock())
+    );
+}
+
+const dayFormats = new Map<string, Intl.DateTimeFormat>();
+
+/** The calendar day a moment falls on in a time zone. */
+export function dayIn(
+    date: Date,
+    timeZone: string,
+): { year: number; month: number; day: number } {
+    let format = dayFormats.get(timeZone);
+
+    if (format === undefined) {
+        format = new Intl.DateTimeFormat(dateLocale, {
+            timeZone,
+            year: 'numeric',
+            month: 'numeric',
+            day: 'numeric',
+        });
+        dayFormats.set(timeZone, format);
+    }
+
+    const parts = Object.fromEntries(
+        format.formatToParts(date).map((part) => [part.type, part.value]),
+    );
+
+    return {
+        year: Number(parts.year),
+        month: Number(parts.month),
+        day: Number(parts.day),
+    };
+}
+
 export function characterCount(value: string): number {
     return Array.from(value).length;
 }
@@ -137,14 +237,57 @@ export function isWithinSeconds(
     return now.getTime() - new Date(date).getTime() < seconds * 1000;
 }
 
+/** The reader's calendar day a moment falls on, like `2026-10-21`. */
+export function localDayKey(date: string): string {
+    const { year, month, day } = dayIn(new Date(date), readerClock().timeZone);
+
+    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
 export function browserTimeZone(): string {
     return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
-export function localDayKey(date: string): string {
-    const day = new Date(date);
+/** A time of day on the reader's clock, like `9:00 AM`. */
+export function formatClockTime(date: string): string {
+    return formatZonedTime(date, readerClock().timeZone);
+}
 
-    return `${day.getFullYear()}-${day.getMonth() + 1}-${day.getDate()}`;
+/** A date and time of day on the reader's clock, like `Oct 26, 2026, 9:00 AM`. */
+export function formatClockDateTime(date: string): string {
+    const { timeZone, hourCycle } = readerClock();
+
+    return new Date(date).toLocaleString(dateLocale, {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+        hourCycle,
+        timeZone,
+    });
+}
+
+/** The month a moment falls in on the reader's calendar, like `October 2026`. */
+export function formatClockMonth(date: string): string {
+    return new Date(date).toLocaleDateString(dateLocale, {
+        month: 'long',
+        year: 'numeric',
+        timeZone: readerClock().timeZone,
+    });
+}
+
+/** The hour, from 0 to 23, and the minute a moment falls on on the reader's clock. */
+export function clockTimeOf(date: string): { hour: number; minute: number } {
+    const parts = Object.fromEntries(
+        new Intl.DateTimeFormat(dateLocale, {
+            hour: 'numeric',
+            minute: 'numeric',
+            hourCycle: 'h23',
+            timeZone: readerClock().timeZone,
+        })
+            .formatToParts(new Date(date))
+            .map((part) => [part.type, part.value]),
+    );
+
+    return { hour: Number(parts.hour), minute: Number(parts.minute) };
 }
 
 /**

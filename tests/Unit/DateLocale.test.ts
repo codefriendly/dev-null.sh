@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+    browserClock,
     formatDayLabel,
     formatFullDateTime,
     formatRelativeTime,
     formatSyncedAgo,
     formatZonedDate,
+    setReaderClock,
 } from '../../resources/js/lib/utils.ts';
 
 void test('month and weekday names stay in English whatever the browser language', () => {
@@ -29,6 +31,7 @@ void test('month and weekday names stay in English whatever the browser language
     });
 
     try {
+        setReaderClock(browserClock());
         // These helpers show the local calendar day, so the fixtures are local noons, not UTC ones.
         const noon = (year: number, month: number, day: number) =>
             new Date(year, month - 1, day, 12).toISOString();
@@ -46,6 +49,7 @@ void test('month and weekday names stay in English whatever the browser language
             '5 Oct 2025',
         );
     } finally {
+        setReaderClock(null);
         Object.defineProperty(Intl, 'DateTimeFormat', original);
     }
 });
