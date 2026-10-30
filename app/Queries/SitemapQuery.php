@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace App\Queries;
 
-use App\Enums\ProfileType;
 use App\Enums\TopicType;
 use App\Models\Commit;
-use App\Models\Profile;
+use App\Models\Organization;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
@@ -216,10 +215,10 @@ final readonly class SitemapQuery
 
     /**
      * Every organization has a page, but not the placeholder handle of a profile whose handle was taken on GitHub,
-     * which its next sync replaces. An organization's page changes with its GitHub profile and the approved commits
-     * that mention it.
+     * which its next sync replaces. An organization's page changes with its GitHub profile, which touches it, its color
+     * and the approved commits that mention it.
      *
-     * @return Builder<Profile>
+     * @return Builder<Organization>
      */
     private function organizations(): Builder
     {
@@ -231,16 +230,16 @@ final readonly class SitemapQuery
             ->selectRaw('max(commits.updated_at) as updated_at')
             ->groupBy('commit_topics.topic_id');
 
-        return Profile::query()
-            ->leftJoinSub($lastMentions, 'last_mentions', 'last_mentions.topic_id', '=', 'profiles.id')
-            ->where('profiles.type', ProfileType::Organization)
+        return Organization::query()
+            ->join('profiles', 'profiles.id', '=', 'organizations.id')
+            ->leftJoinSub($lastMentions, 'last_mentions', 'last_mentions.topic_id', '=', 'organizations.id')
             ->where('profiles.handle', 'not like', '\_%')
             ->select(['profiles.handle', 'profiles.created_at'])
-            ->selectRaw('greatest(profiles.updated_at, last_mentions.updated_at) as updated_at');
+            ->selectRaw('greatest(organizations.updated_at, last_mentions.updated_at) as updated_at');
     }
 
     /**
-     * @return Builder<Profile>
+     * @return Builder<Organization>
      */
     private function organizationsMadeIn(CarbonImmutable $month): Builder
     {

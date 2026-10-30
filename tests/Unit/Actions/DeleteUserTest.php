@@ -20,10 +20,10 @@ use App\Models\LinkPreview;
 use App\Models\Message;
 use App\Models\MessageImage;
 use App\Models\MessageVoice;
+use App\Models\Organization;
 use App\Models\Poll;
 use App\Models\PollOption;
 use App\Models\PollVote;
-use App\Models\Profile;
 use App\Models\PushSubscription;
 use App\Models\User;
 use App\Services\CommitTranslations;
@@ -51,7 +51,7 @@ it('erases the commits of a deleted user along with the replies under them', fun
     Commit::factory()->for($user)->create()->delete();
     $reply = Commit::factory()->for($commit, 'parent')->create();
     $unrelated = Commit::factory()->create();
-    $organization = Profile::factory()->organization()->create();
+    $organization = Organization::factory()->create();
     resolve(CreateCommitTopics::class)->handle($commit, ['laravel' => $organization->id]);
     resolve(CreateCommitTopics::class)->handle($reply, ['laravel' => $organization->id]);
     resolve(CreateCommitTopics::class)->handle($unrelated, ['laravel' => $organization->id]);
@@ -100,7 +100,7 @@ it('erases what a deleted user wrote from the tombstones they leave', function (
         'mentions' => [$mentioned->handle => $mentioned->id],
         'embedding' => embeddingVector(0),
     ]);
-    resolve(CreateCommitTopics::class)->handle($reply, ['laravel' => Profile::factory()->organization()->create()->id]);
+    resolve(CreateCommitTopics::class)->handle($reply, ['laravel' => Organization::factory()->create()->id]);
     $deletedReply = Commit::factory()->for($user)->for($commit, 'parent')->create();
     Commit::factory()->for($reply, 'parent')->create();
     Commit::factory()->for($deletedReply, 'parent')->create();
@@ -196,13 +196,26 @@ it('erases authored polls and the users votes while keeping other polls and vote
 it('erases the organization memberships of a deleted user, keeping their other members', function (): void {
     $user = User::factory()->create();
     $other = User::factory()->create();
-    $organization = Profile::factory()->organization()->create();
+    $organization = Organization::factory()->create();
     $organization->admins()->attach($user->id);
     $organization->members()->attach($other->id, ['role' => OrganizationRole::Member]);
 
     resolve(DeleteUser::class)->handle($user);
 
     expect($organization->members()->pluck('users.id')->all())->toBe([$other->id]);
+});
+
+it('erases the days a deleted user was seen, keeping the days of others', function (): void {
+    $user = User::factory()->create();
+    $other = User::factory()->create();
+    DB::table('user_active_days')->insert([
+        ['user_id' => $user->id, 'seen_at' => '2026-10-19'],
+        ['user_id' => $other->id, 'seen_at' => '2026-10-19'],
+    ]);
+
+    resolve(DeleteUser::class)->handle($user);
+
+    expect(DB::table('user_active_days')->pluck('user_id')->all())->toBe([$other->id]);
 });
 
 it('erases the devices of a deleted user', function (): void {
