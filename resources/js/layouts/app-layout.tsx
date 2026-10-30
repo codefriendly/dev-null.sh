@@ -7,6 +7,7 @@ import {
     MobileHeader,
     MobileNav,
 } from '@/components/app-nav';
+import { CallBar, CallLeaveWarning } from '@/components/chat/call';
 import { ChatDock } from '@/components/chat/chat-dock';
 import {
     CommitComposerDialog,
@@ -90,6 +91,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     useKeyboardShortcuts(
         auth.user,
         auth.log,
+        auth.remotes !== null,
         showShortcuts,
         openSearch,
         compose,
@@ -161,6 +163,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 {auth.user !== null && auth.remotes !== null && !isMessages && (
                     <ChatDock user={auth.user} />
                 )}
+                {auth.user !== null && auth.remotes !== null && (
+                    <>
+                        <CallBar user={auth.user} />
+                        <CallLeaveWarning />
+                    </>
+                )}
 
                 <SearchDialog
                     open={isSearching}
@@ -188,6 +196,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     open={isShowingShortcuts}
                     onOpenChange={setIsShowingShortcuts}
                     canModerate={auth.isAdmin}
+                    hasRemotes={auth.remotes !== null}
                 />
 
                 {isGuest && <LocalSignInDialog />}

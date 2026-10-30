@@ -31,7 +31,7 @@ import {
 import { LocalTime } from '@/components/local-time';
 import { PageTabs } from '@/components/page-tabs';
 import { PinCommitButton } from '@/components/pin-commit-button';
-import { ProfileActionsMenu } from '@/components/profile-actions-menu';
+import { ProfileLiveButton } from '@/components/profile-live-button';
 import { ProfileReadme } from '@/components/profile-readme';
 import { ProfileShareButton } from '@/components/profile-share-button';
 import { Button } from '@/components/ui/button';
@@ -63,6 +63,7 @@ function pluralize(count: number, singular: string, plural: string) {
 
 export default function Show({
     user,
+    bioProfiles,
     pasteisReceived,
     isFollowing,
     followsYou,
@@ -79,6 +80,7 @@ export default function Show({
     readme,
 }: {
     user: Profile;
+    bioProfiles: Record<string, string>;
     pasteisReceived: number | null;
     isFollowing: boolean;
     followsYou: boolean;
@@ -175,7 +177,7 @@ export default function Show({
                         />
                         {isCurrentUser ? (
                             <>
-                                <ProfileActionsMenu user={user} />
+                                <ProfileLiveButton user={user} />
                                 <EditProfileMenu />
                             </>
                         ) : (
@@ -267,7 +269,7 @@ export default function Show({
 
                 {user.bio && (
                     <p className="mt-3 max-w-prose text-[15px] leading-relaxed wrap-break-word whitespace-pre-wrap">
-                        <BioText bio={user.bio} />
+                        <BioText bio={user.bio} profiles={bioProfiles} />
                     </p>
                 )}
 
@@ -276,7 +278,10 @@ export default function Show({
                         <li className="flex items-center gap-1.5">
                             <Building2 className="size-4" />
                             <span>
-                                <BioText bio={user.company} />
+                                <BioText
+                                    bio={user.company}
+                                    profiles={bioProfiles}
+                                />
                             </span>
                         </li>
                     )}

@@ -10,6 +10,7 @@ use App\Dto\LiveStream;
 use App\Enums\DateFormat;
 use App\Enums\LivePlatform;
 use App\Enums\Log;
+use App\Enums\ProfileType;
 use App\Enums\RemotesFrom;
 use App\Enums\TimeFormat;
 use Carbon\CarbonInterface;
@@ -240,7 +241,9 @@ final class User extends Authenticatable
     }
 
     /**
-     * Resolves "@handle" URLs through the profile, which holds the handle.
+     * Resolves "@handle" URLs through the profile, which holds the handle, whatever its case, like GitHub. A stale
+     * profile may still hold the same handle in another case, so the exact case wins, then a user's, then always the
+     * same one, like Profile::resolveRouteBindingQuery() for the link preview images.
      *
      * @param  Model|BuilderContract|Relation<Model, Model, mixed>  $query
      * @param  mixed  $value
@@ -249,7 +252,7 @@ final class User extends Authenticatable
     public function resolveRouteBindingQuery($query, $value, $field = null): BuilderContract
     {
         return $field === 'handle'
-            ? parent::resolveRouteBindingQuery($query, Profile::query()->select('github_id')->where('handle', $value), 'github_id')
+            ? parent::resolveRouteBindingQuery($query, Profile::query()->select('github_id')->whereRaw('LOWER(handle) = LOWER(?)', [$value])->orderByRaw('handle = ? desc', [$value])->orderByRaw('type = ? desc', [ProfileType::User])->orderBy('handle')->limit(1), 'github_id')
             : parent::resolveRouteBindingQuery($query, $value, $field);
     }
 
@@ -338,6 +341,16 @@ final class User extends Authenticatable
     public function isBanned(): bool
     {
         return $this->banned_at !== null;
+    }
+
+    /**
+     * The organizations the user is a member of, see `Profile::members()`.
+     *
+     * @return BelongsToMany<Profile, $this>
+     */
+    public function organizations(): BelongsToMany
+    {
+        return $this->belongsToMany(Profile::class, 'organization_members', 'user_id', 'organization_id')->withPivot('role')->withTimestamps(updatedAt: false);
     }
 
     /**

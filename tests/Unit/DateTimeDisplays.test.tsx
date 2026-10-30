@@ -75,16 +75,64 @@ const { default: ScheduledCommits } =
     await import('../../resources/js/pages/scheduled-commits/index');
 const { default: SiteActivity } =
     await import('../../resources/js/pages/operations/activity');
+const { default: OrganizationMembers } =
+    await import('../../resources/js/pages/organization-member/index');
+const { setRenderedAt } = await import('../../resources/js/hooks/use-now');
 const { browserClock, setReaderClock } =
     await import('../../resources/js/lib/utils');
 
 afterEach(() => {
     setReaderClock(null);
+    setRenderedAt(null);
     vi.useRealTimers();
     vi.restoreAllMocks();
     if (timezone === undefined) delete process.env.TZ;
     else process.env.TZ = timezone;
     server = false;
+});
+
+test('organization join dates follow preferences while relative labels and instants stay unchanged', () => {
+    process.env.TZ = 'Pacific/Honolulu';
+    setReaderClock(browserClock());
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-30T12:00:00Z'));
+    setRenderedAt(Date.now());
+    server = true;
+    const props: Parameters<typeof OrganizationMembers>[0] = {
+        organization: { id: 'organization', handle: 'example' } as Parameters<
+            typeof OrganizationMembers
+        >[0]['organization'],
+        role: 'member',
+        members: ['2026-10-19T00:35:00Z', '2026-10-30T09:00:00Z'].map(
+            (joined_at, index) => ({
+                ...({
+                    id: `member-${index}`,
+                    handle: `member-${index}`,
+                    name: 'Example Member',
+                    avatar_url: null,
+                } as User),
+                role: 'member' as const,
+                joined_at,
+            }),
+        ),
+    };
+    const page = () =>
+        renderToString(<OrganizationMembers {...props} />).replaceAll(
+            '<!-- -->',
+            '',
+        );
+    auth.dateTime = { dateFormat: 'day_first', timeFormat: '24h' };
+    const dayFirst = page();
+    assert.match(dayFirst, /title="14:35 · 18 Oct 2026"/);
+    assert.match(dayFirst, />18 Oct<\/time>/);
+    assert.match(dayFirst, />3h ago<\/time>/);
+    assert.match(dayFirst, /dateTime="2026-10-19T00:35:00Z"/);
+    auth.dateTime = { dateFormat: 'month_first', timeFormat: '12h' };
+    const monthFirst = page();
+    assert.match(monthFirst, /title="2:35\s*PM · Oct 18, 2026"/i);
+    assert.match(monthFirst, />Oct 18<\/time>/);
+    assert.match(monthFirst, />3h ago<\/time>/);
+    assert.match(monthFirst, /dateTime="2026-10-19T00:35:00Z"/);
 });
 
 test('overall activity dates follow viewer date order without shifting the UTC calendar day', () => {

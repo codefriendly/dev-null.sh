@@ -48,6 +48,7 @@ export type Auth = {
         timeFormat: '12h' | '24h' | null;
     };
     user: Profile | null;
+    bioProfiles: Record<string, string>;
     isAdmin: boolean;
     automaticTranslation: boolean;
     mustReadCommitRules: boolean;
