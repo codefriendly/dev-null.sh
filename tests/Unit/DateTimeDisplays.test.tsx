@@ -541,6 +541,18 @@ test('metrics dates follow viewer date order without changing UTC buckets or dat
             },
         ],
         activeUsers: { daily: 3, weekly: 5, monthly: 8, weekly_authors: 2 },
+        retentionByDay: { day_1: [], day_7: [] },
+        retentionRecordedSince: '2026-10-19',
+        retentionCohorts: {
+            cohorts: [
+                {
+                    week: '2026-10-12',
+                    signups: 3,
+                    days: [{ day: 1, eligible: 3, retained: 2, backfilled: 1 }],
+                },
+            ],
+            curve: [{ day: 1, eligible: 3, retained: 2, backfilled: 1 }],
+        },
         responses: {
             commits: 3,
             answered: 1,
@@ -590,7 +602,10 @@ test('metrics dates follow viewer date order without changing UTC buckets or dat
                 <Metrics {...props} />
             </TooltipProvider>,
         );
-    const dayFirst = page();
+    const dayFirst = page().replaceAll('<!-- -->', '');
+    assert.match(dayFirst, /approximate before 19 Oct/);
+    assert.match(dayFirst, />12 Oct<\/span>/);
+    assert.match(dayFirst, /week of 12 Oct, day 1/);
     assert.match(dayFirst, />18 Oct<\/span>/);
     assert.match(dayFirst, /5 fewer than the 7 of 18 Oct, net/);
     assert.match(
@@ -605,7 +620,10 @@ test('metrics dates follow viewer date order without changing UTC buckets or dat
     assert.match(dayFirst, /value="2026-10-19"/);
 
     auth.dateTime = { dateFormat: 'month_first' };
-    const monthFirst = page();
+    const monthFirst = page().replaceAll('<!-- -->', '');
+    assert.match(monthFirst, /approximate before Oct 19/);
+    assert.match(monthFirst, />Oct 12<\/span>/);
+    assert.match(monthFirst, /week of Oct 12, day 1/);
     assert.match(monthFirst, />Oct 18<\/span>/);
     assert.match(monthFirst, /5 fewer than the 7 of Oct 18, net/);
     assert.equal(

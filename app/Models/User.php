@@ -354,6 +354,16 @@ final class User extends Authenticatable
     }
 
     /**
+     * The organizations the user follows, see `Organization::followers()`.
+     *
+     * @return BelongsToMany<Organization, $this>
+     */
+    public function followedOrganizations(): BelongsToMany
+    {
+        return $this->belongsToMany(Organization::class, 'organization_follows', 'user_id', 'organization_id')->withTimestamps(updatedAt: false);
+    }
+
+    /**
      * @return BelongsToMany<Commit, $this>
      */
     public function starredCommits(): BelongsToMany
@@ -460,7 +470,7 @@ final class User extends Authenticatable
     }
 
     /**
-     * Unlike loadCount(), counts follows on the pivot table alone: the self-referencing
+     * Unlike loadCount(), counts follows on the pivot tables alone: the self-referencing
      * relations would otherwise join the users table for every follow. Commits are
      * counted as the viewer sees them, which is all of them for the user themselves.
      */
@@ -678,7 +688,7 @@ final class User extends Authenticatable
         $counts = [
             'commits_count' => $commits,
             'followers_count' => $this->followers()->newPivotQuery()->count(),
-            'following_count' => $this->following()->newPivotQuery()->count(),
+            'following_count' => $this->following()->newPivotQuery()->count() + $this->followedOrganizations()->newPivotQuery()->count(),
         ];
 
         $this->forceFill($counts)->syncOriginalAttributes(array_keys($counts));
